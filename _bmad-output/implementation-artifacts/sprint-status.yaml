@@ -56,7 +56,7 @@ development_status:
   # ─────────────────────────────────────────────────────────────────
   epic-2: in-progress
   2-1-backend-api-create-task-endpoint: done
-  2-2-backend-api-get-all-tasks-endpoint-with-sorting: ready-for-dev
+  2-2-backend-api-get-all-tasks-endpoint-with-sorting: done
   2-3-frontend-task-list-view-with-empty-state: backlog
   2-4-frontend-task-creation-via-fab-and-dialog-5-second-flow: backlog
   2-5-tanstack-query-integration-with-optimistic-updates: backlog

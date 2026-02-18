@@ -1,6 +1,6 @@
 # Story 2.2: Backend API - Get All Tasks Endpoint with Sorting
 
-Status: ready-for-dev
+Status: done
 
 <!-- Note: Validation is optional. Run validate-create-story for quality check before dev-story. -->
 
@@ -42,31 +42,31 @@ so that I can see active tasks newest-first and completed tasks oldest-first.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Add GET /tasks handler to task routes (AC1, AC2, AC4)
-  - [ ] In `packages/backend/src/routes/tasks.ts`, add `GET /tasks` handler
-  - [ ] Use `fastify.prisma.task.findMany()` with ordering:
+- [x] Task 1: Add GET /tasks handler to task routes (AC1, AC2, AC4)
+  - [x] In `packages/backend/src/routes/tasks.ts`, add `GET /tasks` handler
+  - [x] Use `fastify.prisma.task.findMany()` with ordering:
     - Active tasks: `orderBy: { createdAt: 'desc' }` where `status: 'ACTIVE'`
     - Completed tasks: `orderBy: { completedAt: 'asc' }` where `status: 'COMPLETED'`
-  - [ ] Combine into single array: active tasks first, then completed (or use raw Prisma query with composite index)
-  - [ ] Map Prisma Task to `@aine/shared` Task shape (id, text, status, createdAt, completedAt)
-  - [ ] Return 200 with `{ tasks: GetTasksResponse }` per `@aine/shared/types/api.ts`
-  - [ ] Use `toSharedTaskStatus()` helper from Story 2-1 for status mapping
+  - [x] Combine into single array: active tasks first, then completed (or use raw Prisma query with composite index)
+  - [x] Map Prisma Task to `@aine/shared` Task shape (id, text, status, createdAt, completedAt)
+  - [x] Return 200 with `{ tasks: GetTasksResponse }` per `@aine/shared/types/api.ts`
+  - [x] Use `toSharedTaskStatus()` helper from Story 2-1 for status mapping
 
-- [ ] Task 2: Implement sort logic (AC1)
-  - [ ] Query: two `findMany` calls (active + completed) or single query with `orderBy` that achieves same result
-  - [ ] Prisma: use `where: { status: 'ACTIVE' }` + `orderBy: { createdAt: 'desc' }` for active; `where: { status: 'COMPLETED' }` + `orderBy: { completedAt: 'asc' }` for completed; concatenate
+- [x] Task 2: Implement sort logic (AC1)
+  - [x] Query: two `findMany` calls (active + completed) or single query with `orderBy` that achieves same result
+  - [x] Prisma: use `where: { status: 'ACTIVE' }` + `orderBy: { createdAt: 'desc' }` for active; `where: { status: 'COMPLETED' }` + `orderBy: { completedAt: 'asc' }` for completed; concatenate
 
-- [ ] Task 3: Add integration tests for GET endpoint (AC1–AC4)
-  - [ ] Add tests in `packages/backend/tests/integration/tasks.get.test.ts` (or extend tasks.create → tasks.test.ts)
-  - [ ] Test: empty DB → 200, `{ tasks: [] }`
-  - [ ] Test: with tasks → 200, correct sort (active DESC, completed ASC), active before completed
-  - [ ] Test: task JSON has createdAt and completedAt; completedAt null for active
-  - [ ] Test: DB failure (mock findMany rejection) → 500, generic message
+- [x] Task 3: Add integration tests for GET endpoint (AC1–AC4)
+  - [x] Add tests in `packages/backend/tests/integration/tasks.get.test.ts` (or extend tasks.create → tasks.test.ts)
+  - [x] Test: empty DB → 200, `{ tasks: [] }`
+  - [x] Test: with tasks → 200, correct sort (active DESC, completed ASC), active before completed
+  - [x] Test: task JSON has createdAt and completedAt; completedAt null for active
+  - [x] Test: DB failure (mock findMany rejection) → 500, generic message
 
-- [ ] Task 4: Verify all ACs and existing tests (AC1–AC4)
-  - [ ] Run `pnpm --filter backend test:integration` → all pass
-  - [ ] Run `pnpm test` → all pass
-  - [ ] Run `pnpm type-check` and `pnpm lint` → zero errors
+- [x] Task 4: Verify all ACs and existing tests (AC1–AC4)
+  - [x] Run `pnpm --filter backend test:integration` → all pass
+  - [x] Run `pnpm test` → all pass
+  - [x] Run `pnpm type-check` and `pnpm lint` → zero errors (backend; frontend has pre-existing type issues)
 
 ## Dev Notes
 
@@ -159,10 +159,36 @@ Prefer Option A for clarity and use of existing composite index `(status, create
 
 ### Agent Model Used
 
-(To be filled by Dev agent)
+Claude (Cursor)
 
 ### Debug Log References
 
+- Used `Promise.all` for parallel active + completed queries; added `toSharedTask()` helper to reuse mapping logic from POST handler.
+
 ### Completion Notes List
 
+- Added GET /tasks handler in `packages/backend/src/routes/tasks.ts`: two findMany calls (active DESC, completed ASC), concatenated, mapped via `toSharedTask()`.
+- Refactored POST handler to use `toSharedTask()` for consistency.
+- Created `packages/backend/tests/integration/tasks.get.test.ts`: empty DB, sort order, task JSON shape, DB failure mock.
+- All ACs satisfied: AC1 (sort order), AC2 (empty array), AC3 (500 on DB failure), AC4 (createdAt/completedAt fields).
+- Integration tests: 13 total (2 health + 6 create + 5 GET), all pass. Backend type-check and lint pass.
+- **Code Review 2026-02-18:** Fixed AC3 test mock cleanup (try/finally); added completed-task completedAt test for AC4.
+
+### Review Follow-ups (AI)
+
+- [ ] [LOW] Consider 5 active + 3 completed tasks in AC1 test for literal AC match
+- [ ] [LOW] Extract magic numbers (3000, 5000 ms) to named constants in tests
+- [ ] [LOW] Consider (status, completedAt) index for completed-query scale
+
 ### File List
+
+**New files:**
+- `packages/backend/tests/integration/tasks.get.test.ts` — Integration tests for GET /api/v1/tasks
+
+**Modified files:**
+- `packages/backend/src/routes/tasks.ts` — Added GET /tasks handler; added toSharedTask(); refactored POST to use toSharedTask()
+
+### Change Log
+
+- 2026-02-18: Story 2.2 implemented — GET /api/v1/tasks endpoint with sorting (active DESC, completed ASC), GetTasksResponse, integration tests.
+- 2026-02-18: Code Review — AC3 test try/finally for mock restore; added completed-task completedAt test; 3 LOW follow-ups.
