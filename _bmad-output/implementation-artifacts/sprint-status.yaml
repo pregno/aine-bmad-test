@@ -58,7 +58,7 @@ development_status:
   2-1-backend-api-create-task-endpoint: done
   2-2-backend-api-get-all-tasks-endpoint-with-sorting: done
   2-3-frontend-task-list-view-with-empty-state: done
-  2-4-frontend-task-creation-via-fab-and-dialog-5-second-flow: backlog
+  2-4-frontend-task-creation-via-fab-and-dialog-5-second-flow: done
   2-5-tanstack-query-integration-with-optimistic-updates: backlog
   2-6-cross-device-sync-validation: backlog
   epic-2-retrospective: optional

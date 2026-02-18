@@ -2,13 +2,15 @@ import { useState, useEffect, useCallback } from 'react';
 import type { Task } from '@aine/shared';
 import { Box, Button, Card, CardContent, Container, Fab, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { fetchTasks } from '../api/tasks';
+import { fetchTasks, createTask } from '../api/tasks';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
+import { AddTaskDialog } from './AddTaskDialog';
 
 export function HomePage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
 
   const loadTasks = useCallback(async () => {
     setLoading(true);
@@ -27,6 +29,27 @@ export function HomePage() {
     loadTasks();
   }, [loadTasks]);
 
+  const handleAddTask = useCallback((text: string) => {
+    const tempTask: Task = {
+      id: `temp-${Date.now()}`,
+      text,
+      status: 'ACTIVE',
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+    };
+    setTasks((prev) => [tempTask, ...prev]);
+    setDialogOpen(false);
+
+    createTask(text)
+      .then(({ task }) => {
+        setTasks((prev) => prev.map((t) => (t.id === tempTask.id ? task : t)));
+      })
+      .catch(() => {
+        setTasks((prev) => prev.filter((t) => t.id !== tempTask.id));
+        setError('Failed to create task');
+      });
+  }, []);
+
   return (
     <>
       <Container maxWidth="sm" sx={{ pb: 10 }}>
@@ -44,11 +67,13 @@ export function HomePage() {
           {error && !loading && (
             <Box sx={{ py: 2 }}>
               <Typography color="error" gutterBottom>
-                Failed to load tasks
+                {error}
               </Typography>
-              <Button variant="contained" onClick={loadTasks} data-testid="retry-button">
-                Retry
-              </Button>
+              {error === 'Failed to load tasks' && (
+                <Button variant="contained" onClick={loadTasks} data-testid="retry-button">
+                  Retry
+                </Button>
+              )}
             </Box>
           )}
 
@@ -80,6 +105,7 @@ export function HomePage() {
       <Fab
         color="primary"
         aria-label="add task"
+        onClick={() => setDialogOpen(true)}
         sx={{
           position: 'fixed',
           bottom: 16,
@@ -88,6 +114,12 @@ export function HomePage() {
       >
         <AddIcon />
       </Fab>
+
+      <AddTaskDialog
+        open={dialogOpen}
+        onClose={() => setDialogOpen(false)}
+        onSubmit={handleAddTask}
+      />
     </>
   );
 }
