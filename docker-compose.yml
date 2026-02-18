@@ -1,0 +1,18 @@
+# Placeholder — full implementation in Story 1.2
+# docker-compose.yml will configure PostgreSQL, backend, and frontend services
+# with local/test/prod profiles.
+
+services:
+  database:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: aine_dev
+      POSTGRES_USER: aine
+      POSTGRES_PASSWORD: aine_secret
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:

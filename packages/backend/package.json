@@ -1,0 +1,36 @@
+{
+  "name": "@aine/backend",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc",
+    "type-check": "tsc --noEmit",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src --ext .ts",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
+  },
+  "dependencies": {
+    "@aine/shared": "workspace:*",
+    "@fastify/cors": "^9.0.0",
+    "@prisma/client": "^5.8.0",
+    "fastify": "^4.26.0",
+    "node-cron": "^3.0.3",
+    "pino": "^8.18.0",
+    "pino-pretty": "^10.3.0",
+    "zod": "^3.22.0"
+  },
+  "devDependencies": {
+    "@aine/shared": "workspace:*",
+    "@types/node": "^20.0.0",
+    "@types/node-cron": "^3.0.11",
+    "prisma": "^5.8.0",
+    "testcontainers": "^10.6.0",
+    "tsx": "^4.7.0",
+    "typescript": "^5.3.0",
+    "vitest": "^1.0.0"
+  }
+}
