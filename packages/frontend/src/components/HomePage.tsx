@@ -1,53 +1,68 @@
-import { useState, useEffect, useCallback } from 'react';
-import type { Task } from '@aine/shared';
-import { Box, Button, Card, CardContent, Container, Fab, Typography } from '@mui/material';
+import { useState, useCallback } from 'react';
+import {
+  Alert,
+  Box,
+  Button,
+  Card,
+  CardContent,
+  Container,
+  Fab,
+  Snackbar,
+  Typography,
+} from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import { fetchTasks, createTask } from '../api/tasks';
 import { formatRelativeTime } from '../utils/formatRelativeTime';
 import { AddTaskDialog } from './AddTaskDialog';
+import { useTasksQuery } from '../hooks/useTasksQuery';
+import { useCreateTaskMutation } from '../hooks/useCreateTaskMutation';
 
 export function HomePage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [createErrorOpen, setCreateErrorOpen] = useState(false);
+  const [retryText, setRetryText] = useState<string | null>(null);
+  const { data, isLoading, isError, refetch } = useTasksQuery();
+  const createTaskMutation = useCreateTaskMutation();
+  const tasks = data?.tasks ?? [];
+  const hasTasks = tasks.length > 0;
 
-  const loadTasks = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchTasks();
-      setTasks(data.tasks);
-    } catch {
-      setError('Failed to load tasks');
-    } finally {
-      setLoading(false);
-    }
+  const handleCreateError = useCallback((text: string) => {
+    setRetryText(text);
+    setCreateErrorOpen(true);
   }, []);
 
-  useEffect(() => {
-    loadTasks();
-  }, [loadTasks]);
-
-  const handleAddTask = useCallback((text: string) => {
-    const tempTask: Task = {
-      id: `temp-${Date.now()}`,
-      text,
-      status: 'ACTIVE',
-      createdAt: new Date().toISOString(),
-      completedAt: null,
-    };
-    setTasks((prev) => [tempTask, ...prev]);
-    setDialogOpen(false);
-
-    createTask(text)
-      .then(({ task }) => {
-        setTasks((prev) => prev.map((t) => (t.id === tempTask.id ? task : t)));
-      })
-      .catch(() => {
-        setTasks((prev) => prev.filter((t) => t.id !== tempTask.id));
-        setError('Failed to create task');
+  const handleAddTask = useCallback(
+    (text: string) => {
+      setDialogOpen(false);
+      setCreateErrorOpen(false);
+      setRetryText(null);
+      createTaskMutation.mutate(text, {
+        onError: () => {
+          handleCreateError(text);
+        },
       });
+    },
+    [createTaskMutation, handleCreateError]
+  );
+
+  const handleRetryCreate = useCallback(() => {
+    if (!retryText) {
+      return;
+    }
+
+    setCreateErrorOpen(false);
+    createTaskMutation.mutate(retryText, {
+      onError: () => {
+        handleCreateError(retryText);
+      },
+      onSuccess: () => {
+        setRetryText(null);
+        setCreateErrorOpen(false);
+      },
+    });
+  }, [createTaskMutation, handleCreateError, retryText]);
+
+  const handleCloseCreateError = useCallback(() => {
+    setCreateErrorOpen(false);
   }, []);
 
   return (
@@ -58,32 +73,41 @@ export function HomePage() {
             aine — Task Manager
           </Typography>
 
-          {loading && (
+          {isLoading && (
             <Typography color="text.secondary" sx={{ py: 2 }}>
               Loading...
             </Typography>
           )}
 
-          {error && !loading && (
+          {isError && !isLoading && !hasTasks && (
             <Box sx={{ py: 2 }}>
               <Typography color="error" gutterBottom>
-                {error}
+                Failed to load tasks
               </Typography>
-              {error === 'Failed to load tasks' && (
-                <Button variant="contained" onClick={loadTasks} data-testid="retry-button">
-                  Retry
-                </Button>
-              )}
+              <Button variant="contained" onClick={() => void refetch()} data-testid="retry-button">
+                Retry
+              </Button>
             </Box>
           )}
 
-          {!loading && !error && tasks.length === 0 && (
+          {isError && !isLoading && hasTasks && (
+            <Box sx={{ py: 1 }}>
+              <Typography color="error" variant="body2" gutterBottom>
+                Failed to refresh tasks
+              </Typography>
+              <Button variant="text" onClick={() => void refetch()} data-testid="retry-button">
+                Retry
+              </Button>
+            </Box>
+          )}
+
+          {!isLoading && !isError && !hasTasks && (
             <Typography color="text.secondary" sx={{ py: 2 }}>
               No tasks yet. Tap + to get started.
             </Typography>
           )}
 
-          {!loading && !error && tasks.length > 0 && (
+          {!isLoading && hasTasks && (
             <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
               {tasks.map((task) => (
                 <Box component="li" key={task.id} sx={{ mb: 1 }}>
@@ -120,6 +144,26 @@ export function HomePage() {
         onClose={() => setDialogOpen(false)}
         onSubmit={handleAddTask}
       />
+
+      <Snackbar
+        open={createErrorOpen}
+        autoHideDuration={6000}
+        onClose={handleCloseCreateError}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          onClose={handleCloseCreateError}
+          severity="error"
+          action={
+            <Button color="inherit" size="small" onClick={handleRetryCreate}>
+              Retry
+            </Button>
+          }
+          sx={{ width: '100%' }}
+        >
+          Failed to create task. Try again?
+        </Alert>
+      </Snackbar>
     </>
   );
 }
