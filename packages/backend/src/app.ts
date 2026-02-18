@@ -20,7 +20,12 @@ export async function buildApp() {
   });
 
   fastify.setErrorHandler((error, request, reply) => {
-    // TODO: when adding auth, consider sanitizing body (e.g. exclude password fields) before logging
+    // Redact body in logs to avoid leaking sensitive data (passwords, tokens, etc.)
+    const sanitizedBody =
+      request.body && typeof request.body === 'object'
+        ? { _redacted: true, keys: Object.keys(request.body as Record<string, unknown>) }
+        : request.body;
+
     request.log.error(
       {
         err: error,
@@ -28,7 +33,7 @@ export async function buildApp() {
         url: request.url,
         params: request.params,
         query: request.query,
-        body: request.body,
+        body: sanitizedBody,
       },
       'Request error'
     );

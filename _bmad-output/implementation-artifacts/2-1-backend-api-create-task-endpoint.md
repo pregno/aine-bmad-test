@@ -265,6 +265,13 @@ Claude (Cursor)
 - Added integration tests in `packages/backend/tests/integration/tasks.create.test.ts`: valid create, empty text, >500 chars, missing text.
 - Added unit tests for schema in `packages/backend/src/schemas/tasks.test.ts`.
 - All ACs satisfied: AC1 (201 + persist), AC2 (400 empty), AC3 (400 >500), AC4 (500 on DB failure via error handler for uncaught errors).
+- **Code Review 2026-02-18:** Fixed inconsistent validation message for missing text (use `required_error` in schema); sanitized request body in error logs to avoid leaking sensitive data; added trim for whitespace-only text; tightened missing-text test assertion; added whitespace-only test.
+
+### Review Follow-ups (AI)
+
+- [ ] [LOW] Add test for malformed JSON body (Content-Type: application/json with invalid JSON)
+- [ ] [LOW] Consider explicit Content-Type enforcement for POST
+- [ ] [LOW] toSharedTaskStatus: add explicit default/throw if Prisma adds future enum value
 
 ### File List
 
@@ -275,9 +282,13 @@ Claude (Cursor)
 - `packages/backend/tests/integration/tasks.create.test.ts` — Integration tests for create endpoint
 
 **Modified files:**
-- `packages/backend/src/app.ts` — Registered task routes with prefix /api/v1; changed error handler to return reply
+- `packages/backend/src/app.ts` — Registered task routes with prefix /api/v1; error handler sanitizes body in logs
+- `packages/backend/src/schemas/tasks.ts` — Added required_error, trim, pipe for whitespace handling
+- `packages/backend/src/schemas/tasks.test.ts` — Added whitespace-only rejection test
+- `packages/backend/tests/integration/tasks.create.test.ts` — Tightened missing-text assertion; added whitespace-only test
 
 ### Change Log
 
 - 2026-02-18: Story 2.1 implemented — POST /api/v1/tasks endpoint with Zod validation, Prisma persistence, integration tests.
 - 2026-02-18: Code Review Auto-fixes — centralized error handler registration order fixed, validation flow standardized, AC4 DB-failure test added, unsafe enum cast removed, 5xx error response sanitized.
+- 2026-02-18: Code Review — validation message consistency (required_error), body sanitization in logs, trim whitespace in schema, whitespace-only test; 3 remaining LOW action items.

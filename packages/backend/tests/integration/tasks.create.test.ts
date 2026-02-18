@@ -52,7 +52,21 @@ describe('POST /api/v1/tasks (integration)', () => {
     expect(response.statusCode).toBe(400);
     const body = response.json() as Record<string, unknown>;
     expect(body.code).toBe('VALIDATION_ERROR');
-    expect(body.error).toMatch(/text|required/i);
+    expect(body.error).toBe('Task text is required');
+  });
+
+  it('returns 400 when text is whitespace-only', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/tasks',
+      headers: { 'content-type': 'application/json' },
+      payload: { text: '   ' },
+    });
+
+    expect(response.statusCode).toBe(400);
+    const body = response.json() as Record<string, unknown>;
+    expect(body.code).toBe('VALIDATION_ERROR');
+    expect(body.error).toBe('Task text is required');
   });
 
   it('returns 400 when text exceeds 500 characters (AC3)', async () => {
@@ -79,8 +93,9 @@ describe('POST /api/v1/tasks (integration)', () => {
     });
 
     expect(response.statusCode).toBe(400);
-    const body = response.json<{ error: string }>();
-    expect(body.error).toBeDefined();
+    const body = response.json<{ error: string; code: string }>();
+    expect(body.error).toBe('Task text is required');
+    expect(body.code).toBe('VALIDATION_ERROR');
   });
 
   it('returns 500 with generic message when database create fails (AC4)', async () => {
