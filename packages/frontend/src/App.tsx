@@ -1,13 +1,17 @@
-import type { GetTasksResponse } from '@aine/shared';
+import { Suspense, lazy } from 'react';
+import { Route, Routes } from 'react-router-dom';
+import { HomePage } from './components/HomePage';
 
-export type { GetTasksResponse };
+const AboutPage = lazy(() => import('./components/AboutPage'));
 
 function App() {
   return (
-    <div>
-      <h1>aine — Task Manager</h1>
-      <p>Task management app — implementation coming in Story 2.3.</p>
-    </div>
+    <Suspense fallback={null}>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/about" element={<AboutPage />} />
+      </Routes>
+    </Suspense>
   );
 }
 
