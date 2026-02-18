@@ -1,70 +1,185 @@
-import { describe, expect, it } from 'vitest';
-import { act, create, type ReactTestRendererJSON } from 'react-test-renderer';
-import type { ReactTestInstance } from 'react-test-renderer';
-import { TaskStatus, type GetTasksResponse } from '@aine/shared';
+import { describe, expect, it, vi, beforeEach, beforeAll, afterEach } from 'vitest';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { ThemeProvider } from '@mui/material/styles';
+import { theme } from '../theme/muiTheme';
 import { HomePage } from './HomePage';
 
-function collectText(node: ReactTestRendererJSON | ReactTestRendererJSON[] | null): string {
-  if (!node) return '';
-  if (Array.isArray(node)) return node.map((item) => collectText(item)).join(' ');
-
-  const childText = (node.children ?? [])
-    .map((child) => (typeof child === 'string' ? child : collectText(child)))
-    .join(' ');
-
-  return childText;
-}
-
-function normalizeWhitespace(value: string): string {
-  return value.replace(/\s+/g, ' ').trim();
+function renderWithTheme(ui: React.ReactElement) {
+  return render(<ThemeProvider theme={theme}>{ui}</ThemeProvider>);
 }
 
 describe('HomePage', () => {
-  it('renders static homepage content', () => {
-    const renderer = create(<HomePage />);
-    const text = normalizeWhitespace(collectText(renderer.toJSON()));
+  let originalFetch: typeof globalThis.fetch;
 
-    expect(text).toContain('aine');
-    expect(text).toContain('Task management app');
-    expect(text).toContain('Increment');
-    expect(text).toContain('Count: 0');
+  beforeAll(() => {
+    originalFetch = globalThis.fetch;
   });
 
-  it('increments counter when increment button is clicked', () => {
-    const renderer = create(<HomePage />);
-    const root = renderer.root;
-    const button = root.findByType('button') as ReactTestInstance;
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
 
-    act(() => {
-      const onClick = button.props['onClick'] as (() => void) | undefined;
-      onClick?.();
+  afterEach(() => {
+    globalThis.fetch = originalFetch;
+  });
+
+  it('renders title and shows loading initially', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise(() => {}))
+    );
+
+    renderWithTheme(<HomePage />);
+
+    expect(screen.getByRole('heading', { name: /aine — Task Manager/i })).toBeInTheDocument();
+    expect(screen.getByText(/Loading/i)).toBeInTheDocument();
+  });
+
+  it('shows empty state when API returns no tasks (AC2)', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [] }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No tasks yet. Tap + to get started.')).toBeInTheDocument();
     });
 
-    const counter = root.findByProps({ 'data-testid': 'counter' }) as ReactTestInstance;
-    const children = counter.props['children'];
-    const text = normalizeWhitespace(
-      Array.isArray(children)
-        ? children.map((child: unknown) => String(child)).join(' ')
-        : String(children)
-    );
-    expect(text).toContain('Count: 1');
+    expect(screen.getAllByRole('button', { name: /add task/i }).length).toBeGreaterThan(0);
   });
 
-  it('renders seed task count when initialData is provided', () => {
-    const initialData: GetTasksResponse = {
-      tasks: [
-        {
-          id: '00000000-0000-0000-0000-000000000001',
-          text: 'Seed task',
-          status: TaskStatus.ACTIVE,
-          createdAt: new Date().toISOString(),
-          completedAt: null,
-        },
-      ],
-    };
+  it('shows task list when API returns tasks (AC3)', async () => {
+    const tasks = [
+      {
+        id: '1',
+        text: 'Review PR',
+        status: 'ACTIVE' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+      },
+    ];
 
-    const renderer = create(<HomePage initialData={initialData} />);
-    const text = normalizeWhitespace(collectText(renderer.toJSON()));
-    expect(text).toContain('Seed tasks: 1');
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Review PR')).toBeInTheDocument();
+    });
+
+    expect(screen.getAllByRole('button', { name: /add task/i }).length).toBeGreaterThan(0);
+  });
+
+  it('shows 3 task cards in newest-first order when API returns 3 tasks (AC3)', async () => {
+    const baseTime = new Date('2026-02-18T12:00:00Z').getTime();
+    // API returns newest-first (per Story 2.2)
+    const tasks = [
+      {
+        id: '3',
+        text: 'Newest task',
+        status: 'ACTIVE' as const,
+        createdAt: new Date(baseTime).toISOString(),
+        completedAt: null,
+      },
+      {
+        id: '2',
+        text: 'Middle task',
+        status: 'ACTIVE' as const,
+        createdAt: new Date(baseTime - 86400000).toISOString(),
+        completedAt: null,
+      },
+      {
+        id: '1',
+        text: 'Oldest task',
+        status: 'ACTIVE' as const,
+        createdAt: new Date(baseTime - 86400000 * 2).toISOString(),
+        completedAt: null,
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Newest task')).toBeInTheDocument();
+    });
+
+    const taskList = screen.getByText('Newest task').closest('ul');
+    expect(taskList).toBeInTheDocument();
+    const cards = taskList!.querySelectorAll(':scope > li');
+    expect(cards).toHaveLength(3);
+    expect(cards[0]).toHaveTextContent('Newest task');
+    expect(cards[1]).toHaveTextContent('Middle task');
+    expect(cards[2]).toHaveTextContent('Oldest task');
+  });
+
+  it('shows error and Retry when API fails (AC4)', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new Error('Network error')));
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load tasks')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('retry-button')).toBeInTheDocument();
+    expect(screen.getAllByRole('button', { name: /add task/i }).length).toBeGreaterThan(0);
+  });
+
+  it('refetches when Retry is clicked', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('Fail'))
+      .mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            tasks: [
+              {
+                id: '1',
+                text: 'Recovered',
+                status: 'ACTIVE',
+                createdAt: new Date().toISOString(),
+                completedAt: null,
+              },
+            ],
+          }),
+      });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load tasks')).toBeInTheDocument();
+    });
+
+    const retryButtons = screen.getAllByTestId('retry-button');
+    await userEvent.click(retryButtons[0]!);
+
+    await waitFor(() => {
+      expect(screen.getByText('Recovered')).toBeInTheDocument();
+    });
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });

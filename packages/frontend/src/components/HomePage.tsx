@@ -1,38 +1,93 @@
-import { useState } from 'react';
-import type { GetTasksResponse } from '@aine/shared';
-import { Box, Button, Container, Typography } from '@mui/material';
+import { useState, useEffect, useCallback } from 'react';
+import type { Task } from '@aine/shared';
+import { Box, Button, Card, CardContent, Container, Fab, Typography } from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import { fetchTasks } from '../api/tasks';
+import { formatRelativeTime } from '../utils/formatRelativeTime';
 
-interface HomePageProps {
-  /** Placeholder for future API data (Story 2.5) */
-  initialData?: GetTasksResponse;
-}
+export function HomePage() {
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-export function HomePage({ initialData }: HomePageProps = {}) {
-  const [count, setCount] = useState(0);
+  const loadTasks = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchTasks();
+      setTasks(data.tasks);
+    } catch {
+      setError('Failed to load tasks');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadTasks();
+  }, [loadTasks]);
 
   return (
-    <Container maxWidth="sm">
-      <Box sx={{ py: 4 }}>
-        <Typography variant="h4" component="h1" gutterBottom>
-          aine — Task Manager
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Task management app — implementation coming in Story 2.3.
-        </Typography>
-        <Box sx={{ mt: 2, display: 'flex', gap: 1, alignItems: 'center' }}>
-          <Button variant="contained" onClick={() => setCount((value) => value + 1)}>
-            Increment
-          </Button>
-          <Typography data-testid="counter" variant="body2">
-            Count: {count}
+    <>
+      <Container maxWidth="sm" sx={{ pb: 10 }}>
+        <Box sx={{ py: 2 }}>
+          <Typography variant="h4" component="h1" gutterBottom>
+            aine — Task Manager
           </Typography>
+
+          {loading && (
+            <Typography color="text.secondary" sx={{ py: 2 }}>
+              Loading...
+            </Typography>
+          )}
+
+          {error && !loading && (
+            <Box sx={{ py: 2 }}>
+              <Typography color="error" gutterBottom>
+                Failed to load tasks
+              </Typography>
+              <Button variant="contained" onClick={loadTasks} data-testid="retry-button">
+                Retry
+              </Button>
+            </Box>
+          )}
+
+          {!loading && !error && tasks.length === 0 && (
+            <Typography color="text.secondary" sx={{ py: 2 }}>
+              No tasks yet. Tap + to get started.
+            </Typography>
+          )}
+
+          {!loading && !error && tasks.length > 0 && (
+            <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
+              {tasks.map((task) => (
+                <Box component="li" key={task.id} sx={{ mb: 1 }}>
+                  <Card sx={{ minHeight: 48 }}>
+                    <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                      <Typography variant="body1">{task.text}</Typography>
+                      <Typography variant="caption" color="text.secondary">
+                        {formatRelativeTime(task.createdAt)}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Box>
+              ))}
+            </Box>
+          )}
         </Box>
-        {initialData ? (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 1 }}>
-            Seed tasks: {initialData.tasks.length}
-          </Typography>
-        ) : null}
-      </Box>
-    </Container>
+      </Container>
+
+      <Fab
+        color="primary"
+        aria-label="add task"
+        sx={{
+          position: 'fixed',
+          bottom: 16,
+          right: 16,
+        }}
+      >
+        <AddIcon />
+      </Fab>
+    </>
   );
 }
