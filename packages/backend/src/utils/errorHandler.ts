@@ -40,8 +40,6 @@ export function buildErrorResponse(
   requestUrl: string,
   requestId: string
 ): ErrorResult {
-  const isProduction = process.env['NODE_ENV'] === 'production';
-
   let statusCode = 500;
   let message = 'Internal server error';
   let code: string | undefined;
@@ -64,7 +62,8 @@ export function buildErrorResponse(
     }
   }
 
-  if (isProduction && statusCode >= 500) {
+  // Always sanitize server-side failures to avoid leaking internals.
+  if (statusCode >= 500) {
     message = 'Internal server error';
     code = undefined;
     details = undefined;

@@ -55,7 +55,7 @@ development_status:
   # Epic 2: Core Task Management - Capture & Storage
   # ─────────────────────────────────────────────────────────────────
   epic-2: in-progress
-  2-1-backend-api-create-task-endpoint: ready-for-dev
+  2-1-backend-api-create-task-endpoint: done
   2-2-backend-api-get-all-tasks-endpoint-with-sorting: backlog
   2-3-frontend-task-list-view-with-empty-state: backlog
   2-4-frontend-task-creation-via-fab-and-dialog-5-second-flow: backlog

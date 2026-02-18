@@ -62,7 +62,7 @@ describe('errorHandler', () => {
 
         expect(result.statusCode).toBe(500);
         expect(result.body).toMatchObject({
-          error: 'Something broke',
+          error: 'Internal server error',
           path: requestUrl,
           requestId,
         });

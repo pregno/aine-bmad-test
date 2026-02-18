@@ -3,6 +3,7 @@ import cors from '@fastify/cors';
 import { loggerConfig } from './utils/logger';
 import { prismaPlugin } from './plugins/prisma';
 import { healthRoutes } from './routes/health';
+import { taskRoutes } from './routes/tasks';
 import { buildErrorResponse } from './utils/errorHandler';
 import { env } from './config/env';
 
@@ -18,9 +19,6 @@ export async function buildApp() {
     credentials: true,
   });
 
-  await fastify.register(prismaPlugin);
-  await fastify.register(healthRoutes);
-
   fastify.setErrorHandler((error, request, reply) => {
     // TODO: when adding auth, consider sanitizing body (e.g. exclude password fields) before logging
     request.log.error(
@@ -35,8 +33,12 @@ export async function buildApp() {
       'Request error'
     );
     const { statusCode, body } = buildErrorResponse(error, request.url, request.id);
-    void reply.status(statusCode).send(body);
+    return reply.status(statusCode).send(body);
   });
+
+  await fastify.register(prismaPlugin);
+  await fastify.register(healthRoutes);
+  await fastify.register(taskRoutes, { prefix: '/api/v1' });
 
   fastify.addHook('onRequest', async (request) => {
     request.log.info({ method: request.method, url: request.url }, 'Incoming request');
