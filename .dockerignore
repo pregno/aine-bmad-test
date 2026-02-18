@@ -1,0 +1,15 @@
+node_modules
+dist
+coverage
+.git
+.gitignore
+*.md
+*.log
+.env*.local
+.vscode
+.idea
+.DS_Store
+playwright-report
+test-results
+_bmad
+_bmad-output
