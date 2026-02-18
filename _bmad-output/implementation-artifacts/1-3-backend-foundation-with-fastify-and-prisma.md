@@ -1,6 +1,6 @@
 # Story 1.3: Backend Foundation with Fastify and Prisma
 
-Status: ready-for-dev
+Status: in-progress
 
 ## Story
 
@@ -37,64 +37,64 @@ so that I can build REST API endpoints with type-safe database access.
 
 ## Tasks / Subtasks
 
-- [ ] Task 1: Create environment validation with Zod (AC1)
-  - [ ] Create `packages/backend/src/config/env.ts` with Zod schema validating `NODE_ENV`, `PORT`, `DATABASE_URL`, `LOG_LEVEL`, `FRONTEND_URL`
-  - [ ] Validate env on server startup, exit with clear error message on invalid config
+- [x] Task 1: Create environment validation with Zod (AC1)
+  - [x] Create `packages/backend/src/config/env.ts` with Zod schema validating `NODE_ENV`, `PORT`, `DATABASE_URL`, `LOG_LEVEL`, `FRONTEND_URL`
+  - [x] Validate env on server startup, exit with clear error message on invalid config
 
-- [ ] Task 2: Create Pino logger utility (AC1)
-  - [ ] Create `packages/backend/src/utils/logger.ts` with Pino
-  - [ ] Configure pretty-print transport for development (when `NODE_ENV=development`)
-  - [ ] Configure raw JSON output for production
-  - [ ] Use `LOG_LEVEL` from env (default: `info`)
+- [x] Task 2: Create Pino logger utility (AC1)
+  - [x] Create `packages/backend/src/utils/logger.ts` with Pino
+  - [x] Configure pretty-print transport for development (when `NODE_ENV=development`)
+  - [x] Configure raw JSON output for production
+  - [x] Use `LOG_LEVEL` from env (default: `info`)
 
-- [ ] Task 3: Create Prisma plugin for Fastify (AC1, AC3)
-  - [ ] Create `packages/backend/src/plugins/prisma.ts` as a Fastify plugin
-  - [ ] Initialize PrismaClient, decorate Fastify instance with `prisma`
-  - [ ] Handle graceful shutdown (`prisma.$disconnect` on `onClose` hook)
+- [x] Task 3: Create Prisma plugin for Fastify (AC1, AC3)
+  - [x] Create `packages/backend/src/plugins/prisma.ts` as a Fastify plugin
+  - [x] Initialize PrismaClient, decorate Fastify instance with `prisma`
+  - [x] Handle graceful shutdown (`prisma.$disconnect` on `onClose` hook)
 
-- [ ] Task 4: Create centralized error handler (AC1)
-  - [ ] Create `packages/backend/src/utils/errorHandler.ts`
-  - [ ] Map errors to HTTP status codes: `TaskNotFoundError` → 404, `ValidationError` → 400, unknown → 500
-  - [ ] Log full error context (stack, request details) via Pino
-  - [ ] Return sanitized error responses (no stack traces in production)
+- [x] Task 4: Create centralized error handler (AC1)
+  - [x] Create `packages/backend/src/utils/errorHandler.ts`
+  - [x] Map errors to HTTP status codes: `TaskNotFoundError` → 404, `ValidationError` → 400, unknown → 500
+  - [x] Log full error context (stack, request details) via Pino
+  - [x] Return sanitized error responses (no stack traces in production)
 
-- [ ] Task 5: Create health check routes (AC1)
-  - [ ] Create `packages/backend/src/routes/health.ts`
-  - [ ] `GET /health` — returns `{ status: "healthy", timestamp }` (basic, fast)
-  - [ ] `GET /health/detailed` — returns database check + memory usage (200 or 503)
+- [x] Task 5: Create health check routes (AC1)
+  - [x] Create `packages/backend/src/routes/health.ts`
+  - [x] `GET /health` — returns `{ status: "healthy", timestamp }` (basic, fast)
+  - [x] `GET /health/detailed` — returns database check + memory usage (200 or 503)
 
-- [ ] Task 6: Build Fastify app configuration (AC1)
-  - [ ] Create `packages/backend/src/app.ts` with `buildApp()` export
-  - [ ] Register Pino logger from `logger.ts`
-  - [ ] Register `@fastify/cors` with `FRONTEND_URL` origin
-  - [ ] Register Prisma plugin
-  - [ ] Register health routes
-  - [ ] Register centralized error handler
-  - [ ] Set `requestIdHeader: 'x-request-id'` for request correlation
-  - [ ] Add request/response logging hooks (method, url, statusCode, responseTime)
+- [x] Task 6: Build Fastify app configuration (AC1)
+  - [x] Create `packages/backend/src/app.ts` with `buildApp()` export
+  - [x] Register Pino logger from `logger.ts`
+  - [x] Register `@fastify/cors` with `FRONTEND_URL` origin
+  - [x] Register Prisma plugin
+  - [x] Register health routes
+  - [x] Register centralized error handler
+  - [x] Set `requestIdHeader: 'x-request-id'` for request correlation
+  - [x] Add request/response logging hooks (method, url, statusCode, responseTime)
 
-- [ ] Task 7: Replace placeholder `index.ts` with real server entry (AC1, AC4)
-  - [ ] Replace `packages/backend/src/index.ts` content
-  - [ ] Import `env` (triggers validation on startup)
-  - [ ] Import and call `buildApp()`
-  - [ ] Call `app.listen({ port: env.PORT, host: '0.0.0.0' })`
-  - [ ] Log startup message with port and NODE_ENV
-  - [ ] Handle startup errors with graceful exit
+- [x] Task 7: Replace placeholder `index.ts` with real server entry (AC1, AC4)
+  - [x] Replace `packages/backend/src/index.ts` content
+  - [x] Import `env` (triggers validation on startup)
+  - [x] Import and call `buildApp()`
+  - [x] Call `app.listen({ port: env.PORT, host: '0.0.0.0' })`
+  - [x] Log startup message with port and NODE_ENV
+  - [x] Handle startup errors with graceful exit
 
-- [ ] Task 8: Run Prisma migration (AC2)
-  - [ ] Ensure Docker database container is running (`docker compose --profile local up -d database-local`)
-  - [ ] Run `pnpm --filter backend prisma migrate dev --name init`
-  - [ ] Verify migration creates `tasks` table with correct columns and composite index
-  - [ ] Verify Prisma client is generated (`@prisma/client` types available)
+- [x] Task 8: Run Prisma migration (AC2)
+  - [x] Ensure Docker database container is running (`docker compose --profile local up -d database-local`)
+  - [x] Run `pnpm --filter backend prisma migrate dev --name init`
+  - [x] Verify migration creates `tasks` table with correct columns and composite index
+  - [x] Verify Prisma client is generated (`@prisma/client` types available)
 
 - [ ] Task 9: Verify all ACs (AC1, AC2, AC3, AC4)
-  - [ ] Start database: `docker compose --profile local up -d database-local`
-  - [ ] Run `pnpm --filter backend dev` — verify server starts, Pino logs appear
-  - [ ] `curl http://localhost:3000/health` — verify 200 response
-  - [ ] `curl http://localhost:3000/health/detailed` — verify database check passes
+  - [x] Start database: `docker compose --profile local up -d database-local`
+  - [x] Run `pnpm --filter backend dev` — verify server starts, Pino logs appear
+  - [x] `curl http://localhost:3000/health` — verify 200 response
+  - [x] `curl http://localhost:3000/health/detailed` — verify database check passes
   - [ ] Modify a file in `packages/backend/src` — verify tsx watch restarts server
-  - [ ] Run `pnpm type-check` — verify zero TypeScript errors
-  - [ ] Run `pnpm lint` — verify zero ESLint errors
+  - [x] Run `pnpm type-check` — verify zero TypeScript errors
+  - [x] Run `pnpm lint` — verify zero ESLint errors
 
 ## Dev Notes
 
@@ -408,10 +408,67 @@ Do NOT modify the schema in this story. Only run the migration.
 
 ### Agent Model Used
 
-{{agent_model_name_version}}
+Claude claude-4.6-opus (via Cursor)
 
 ### Debug Log References
 
+- Fixed 3 TypeScript strict mode issues (`exactOptionalPropertyTypes`):
+  1. Pino `transport: undefined` not assignable — resolved by splitting config into separate dev/prod objects with conditional assignment (no `undefined` value)
+  2. Pino `Logger` not assignable to `FastifyBaseLogger` (missing `msgPrefix`) — resolved by passing logger config options to Fastify instead of a logger instance
+  3. `setErrorHandler` type incompatibility with standalone function — resolved by using inline arrow function in `app.ts` that delegates to `buildErrorResponse` helper
+- `DATABASE_URL` Zod validation: Changed from `z.string().url()` to `z.string().min(1)` because Zod's `.url()` rejects `postgresql://` scheme URLs
+- `@fastify/cors@^9.0.0` works with Fastify 4.x despite Dev Notes warning about v8.x — no compatibility issues encountered
+
 ### Completion Notes List
 
+- **Task 1**: Zod environment validation in `config/env.ts` — validates `NODE_ENV`, `PORT`, `DATABASE_URL`, `LOG_LEVEL`, `FRONTEND_URL` with defaults and type transformations. Exits with clear error on invalid config.
+- **Task 2**: Pino logger in `utils/logger.ts` — pretty-print transport for development, raw JSON for production. Exports both `loggerConfig` (for Fastify) and `logger` (standalone).
+- **Task 3**: Prisma Fastify plugin in `plugins/prisma.ts` — decorates `fastify.prisma` with type augmentation, handles graceful disconnect on close.
+- **Task 4**: Error handler in `utils/errorHandler.ts` — exports `AppError`, `TaskNotFoundError`, `ValidationError` classes and `buildErrorResponse` helper. Sanitizes 5xx responses in production.
+- **Task 5**: Health routes in `routes/health.ts` — `GET /health` (basic, no DB) and `GET /health/detailed` (DB check + memory stats, returns 503 if unhealthy).
+- **Task 6**: Fastify app in `app.ts` — registers CORS, Prisma plugin, health routes, error handler, and request/response logging hooks with timing.
+- **Task 7**: Server entry in `index.ts` — imports `env` first (triggers validation), builds app, listens on `0.0.0.0:PORT`.
+- **Task 8**: Prisma migration `20260218132725_init` — creates `tasks` table with `TaskStatus` enum, UUID primary key, composite index on `(status, created_at)`.
+- **Task 9**: AC1/AC2/AC3 verification complete (server start, health endpoints, CORS, migration, type safety, lint/type-check). AC4 hot-reload timing verification remains open for manual local-IDE confirmation.
+
+- **Code Review Auto-fixes**:
+  - Updated error response builder to include Fastify validation details for 4xx responses.
+  - Expanded centralized error logging context to include params/query/body.
+  - Aligned Prisma schema and initial SQL migration to use UUID column type for `tasks.id`.
+  - Corrected story completion claims and task checkboxes to reflect actual verification state.
+
 ### File List
+
+New files:
+- `packages/backend/src/config/env.ts`
+- `packages/backend/src/utils/logger.ts`
+- `packages/backend/src/plugins/prisma.ts`
+- `packages/backend/src/utils/errorHandler.ts`
+- `packages/backend/src/routes/health.ts`
+- `packages/backend/src/app.ts`
+- `packages/backend/prisma/migrations/20260218132725_init/migration.sql`
+- `packages/backend/prisma/migrations/migration_lock.toml`
+
+Modified files:
+- `packages/backend/src/index.ts` (replaced placeholder with real server entry)
+- `packages/backend/package.json` (added `fastify-plugin` dependency)
+- `packages/backend/prisma/schema.prisma` (set `Task.id` to `@db.Uuid`)
+- `pnpm-lock.yaml` (workspace lockfile update from dependency install)
+
+### Change Log
+
+- 2026-02-18: Implemented Story 1.3 — Backend Foundation with Fastify and Prisma. Created Fastify server skeleton with Pino logging, Prisma ORM integration, Zod environment validation, centralized error handling, health check endpoints, CORS configuration, and request/response logging hooks. Ran initial Prisma migration creating `tasks` table.
+- 2026-02-18: Senior Developer code review fixes applied (error response details, full error logging context, UUID migration alignment, story/file-list accuracy updates).
+
+## Senior Developer Review (AI)
+
+**Outcome:** Changes Requested (partially resolved)  
+**Review Date:** 2026-02-18
+
+### Action Items
+
+- [x] [HIGH] Align AC2 UUID requirement with actual migration implementation (`packages/backend/prisma/schema.prisma`, `packages/backend/prisma/migrations/20260218132725_init/migration.sql`)
+- [x] [MEDIUM] Include 4xx validation `details` in centralized error response contract (`packages/backend/src/utils/errorHandler.ts`)
+- [x] [MEDIUM] Log fuller request context on errors (params/query/body) (`packages/backend/src/app.ts`)
+- [x] [MEDIUM] Sync story File List with actual workspace changes (`pnpm-lock.yaml` included)
+- [ ] [HIGH] Provide deterministic evidence for AC4 hot-reload restart timing (`<2s`) in this execution environment

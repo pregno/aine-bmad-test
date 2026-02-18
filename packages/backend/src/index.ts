@@ -1,8 +1,15 @@
-import type { GetTasksResponse } from '@aine/shared';
+import { env } from './config/env';
+import { buildApp } from './app';
 
-export type { GetTasksResponse };
+async function start(): Promise<void> {
+  try {
+    const app = await buildApp();
+    await app.listen({ port: env.PORT, host: '0.0.0.0' });
+    app.log.info(`Server listening on port ${String(env.PORT)} in ${env.NODE_ENV} mode`);
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+}
 
-const PORT = process.env['PORT'] ?? 3000;
-
-console.log(`Backend service starting on port ${PORT}...`);
-console.log('Full implementation in Story 1.3: Backend Foundation with Fastify and Prisma');
+void start();
