@@ -46,7 +46,7 @@ development_status:
   epic-1: in-progress
   1-1-workspace-setup-with-pnpm-and-shared-types: done
   1-2-docker-compose-multi-environment-configuration: done
-  1-3-backend-foundation-with-fastify-and-prisma: in-progress
+  1-3-backend-foundation-with-fastify-and-prisma: done
   1-4-frontend-foundation-with-react-vite-and-material-ui: backlog
   1-5-testing-infrastructure-with-vitest-testcontainers-and-playwright: backlog
   epic-1-retrospective: optional

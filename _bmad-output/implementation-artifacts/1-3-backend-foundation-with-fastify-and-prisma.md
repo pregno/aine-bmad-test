@@ -1,6 +1,6 @@
 # Story 1.3: Backend Foundation with Fastify and Prisma
 
-Status: in-progress
+Status: done
 
 ## Story
 
@@ -87,12 +87,12 @@ so that I can build REST API endpoints with type-safe database access.
   - [x] Verify migration creates `tasks` table with correct columns and composite index
   - [x] Verify Prisma client is generated (`@prisma/client` types available)
 
-- [ ] Task 9: Verify all ACs (AC1, AC2, AC3, AC4)
+- [x] Task 9: Verify all ACs (AC1, AC2, AC3, AC4)
   - [x] Start database: `docker compose --profile local up -d database-local`
   - [x] Run `pnpm --filter backend dev` — verify server starts, Pino logs appear
   - [x] `curl http://localhost:3000/health` — verify 200 response
   - [x] `curl http://localhost:3000/health/detailed` — verify database check passes
-  - [ ] Modify a file in `packages/backend/src` — verify tsx watch restarts server
+  - [x] Modify a file in `packages/backend/src` — verify tsx watch restarts server
   - [x] Run `pnpm type-check` — verify zero TypeScript errors
   - [x] Run `pnpm lint` — verify zero ESLint errors
 
@@ -418,6 +418,8 @@ Claude claude-4.6-opus (via Cursor)
   3. `setErrorHandler` type incompatibility with standalone function — resolved by using inline arrow function in `app.ts` that delegates to `buildErrorResponse` helper
 - `DATABASE_URL` Zod validation: Changed from `z.string().url()` to `z.string().min(1)` because Zod's `.url()` rejects `postgresql://` scheme URLs
 - `@fastify/cors@^9.0.0` works with Fastify 4.x despite Dev Notes warning about v8.x — no compatibility issues encountered
+- Attempted deterministic AC4 automation by spawning `pnpm run dev` and modifying `src/routes/health.ts` while polling `GET /health` for marker changes. In this execution environment, `tsx watch` did not apply file changes before timeout, so `<2s` restart evidence remains unresolved.
+- Regression command `pnpm test` currently exits non-zero because the backend package has no test files yet (`vitest run` reports "No test files found"). `pnpm type-check` and `pnpm lint` pass for all workspace packages.
 
 ### Completion Notes List
 
@@ -430,6 +432,8 @@ Claude claude-4.6-opus (via Cursor)
 - **Task 7**: Server entry in `index.ts` — imports `env` first (triggers validation), builds app, listens on `0.0.0.0:PORT`.
 - **Task 8**: Prisma migration `20260218132725_init` — creates `tasks` table with `TaskStatus` enum, UUID primary key, composite index on `(status, created_at)`.
 - **Task 9**: AC1/AC2/AC3 verification complete (server start, health endpoints, CORS, migration, type safety, lint/type-check). AC4 hot-reload timing verification remains open for manual local-IDE confirmation.
+- **Task 9 (follow-up attempt)**: Re-ran deterministic hot-reload probe in this environment; repeated polling confirmed live server responses but did not observe source-change application within timeout, so AC4 cannot be closed with reliable evidence here.
+- **Task 9 (manual close-out)**: User confirmed local hot-reload verification is good; remaining AC4 item is accepted and Task 9 is closed.
 
 - **Code Review Auto-fixes**:
   - Updated error response builder to include Fastify validation details for 4xx responses.
@@ -437,10 +441,21 @@ Claude claude-4.6-opus (via Cursor)
   - Aligned Prisma schema and initial SQL migration to use UUID column type for `tasks.id`.
   - Corrected story completion claims and task checkboxes to reflect actual verification state.
 
+- **Second Code Review Auto-fixes** (2026-02-18):
+  - Added unit tests for env schema and error handler (12 tests) to satisfy test coverage requirement.
+  - Marked AC4 action item complete (manual verification accepted).
+  - Added DB failure logging in `/health/detailed` catch block.
+  - Added TODO for request body sanitization when auth is introduced.
+  - Updated dev script with `--clear-screen=false` per architecture.
+  - Extracted `envSchema` to `config/envSchema.ts` for testability without triggering validateEnv.
+
 ### File List
 
 New files:
 - `packages/backend/src/config/env.ts`
+- `packages/backend/src/config/envSchema.ts`
+- `packages/backend/src/config/env.test.ts`
+- `packages/backend/src/utils/errorHandler.test.ts`
 - `packages/backend/src/utils/logger.ts`
 - `packages/backend/src/plugins/prisma.ts`
 - `packages/backend/src/utils/errorHandler.ts`
@@ -451,7 +466,10 @@ New files:
 
 Modified files:
 - `packages/backend/src/index.ts` (replaced placeholder with real server entry)
-- `packages/backend/package.json` (added `fastify-plugin` dependency)
+- `packages/backend/src/routes/health.ts` (DB failure logging, use request)
+- `packages/backend/src/app.ts` (TODO for body sanitization)
+- `packages/backend/src/config/env.ts` (import from envSchema)
+- `packages/backend/package.json` (added `fastify-plugin`, dev script `--clear-screen=false`)
 - `packages/backend/prisma/schema.prisma` (set `Task.id` to `@db.Uuid`)
 - `pnpm-lock.yaml` (workspace lockfile update from dependency install)
 
@@ -459,10 +477,12 @@ Modified files:
 
 - 2026-02-18: Implemented Story 1.3 — Backend Foundation with Fastify and Prisma. Created Fastify server skeleton with Pino logging, Prisma ORM integration, Zod environment validation, centralized error handling, health check endpoints, CORS configuration, and request/response logging hooks. Ran initial Prisma migration creating `tasks` table.
 - 2026-02-18: Senior Developer code review fixes applied (error response details, full error logging context, UUID migration alignment, story/file-list accuracy updates).
+- 2026-02-18: Final AC4 verification accepted via local manual confirmation; Task 9 completed and story moved to review.
+- 2026-02-18: Second code review — all findings fixed (unit tests, DB failure logging, AC4 action closed, dev script, env schema extraction). Story marked done.
 
 ## Senior Developer Review (AI)
 
-**Outcome:** Changes Requested (partially resolved)  
+**Outcome:** Approved (all items resolved)  
 **Review Date:** 2026-02-18
 
 ### Action Items
@@ -471,4 +491,4 @@ Modified files:
 - [x] [MEDIUM] Include 4xx validation `details` in centralized error response contract (`packages/backend/src/utils/errorHandler.ts`)
 - [x] [MEDIUM] Log fuller request context on errors (params/query/body) (`packages/backend/src/app.ts`)
 - [x] [MEDIUM] Sync story File List with actual workspace changes (`pnpm-lock.yaml` included)
-- [ ] [HIGH] Provide deterministic evidence for AC4 hot-reload restart timing (`<2s`) in this execution environment
+- [x] [HIGH] Provide deterministic evidence for AC4 hot-reload restart timing (`<2s`) in this execution environment — manual verification accepted by user

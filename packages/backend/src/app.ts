@@ -22,6 +22,7 @@ export async function buildApp() {
   await fastify.register(healthRoutes);
 
   fastify.setErrorHandler((error, request, reply) => {
+    // TODO: when adding auth, consider sanitizing body (e.g. exclude password fields) before logging
     request.log.error(
       {
         err: error,

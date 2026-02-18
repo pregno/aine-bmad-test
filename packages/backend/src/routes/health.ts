@@ -6,14 +6,15 @@ export async function healthRoutes(fastify: FastifyInstance): Promise<void> {
     timestamp: new Date().toISOString(),
   }));
 
-  fastify.get('/health/detailed', async (_request, reply) => {
+  fastify.get('/health/detailed', async (request, reply) => {
     let isHealthy = true;
     let dbStatus: string;
 
     try {
       await fastify.prisma.$queryRaw`SELECT 1`;
       dbStatus = 'up';
-    } catch {
+    } catch (err) {
+      fastify.log.error({ err }, 'Database health check failed');
       dbStatus = 'down';
       isHealthy = false;
     }
