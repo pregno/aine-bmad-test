@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { TaskStatus } from '@aine/shared';
 
 export const createTaskSchema = z.object({
   text: z
@@ -13,3 +14,15 @@ export const createTaskSchema = z.object({
 });
 
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+
+export const updateTaskSchema = z
+  .object({
+    status: z.nativeEnum(TaskStatus, {
+      errorMap: () => ({ message: 'Status must be "ACTIVE" or "COMPLETED"' }),
+    }),
+  })
+  .strict();
+
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+
+export const uuidParamSchema = z.string().uuid({ message: 'Invalid task ID format' });

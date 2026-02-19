@@ -66,9 +66,9 @@ development_status:
   # ─────────────────────────────────────────────────────────────────
   # Epic 3: Task Lifecycle - Completion & Deletion
   # ─────────────────────────────────────────────────────────────────
-  epic-3: backlog
-  3-1-backend-api-update-task-status-endpoint: backlog
-  3-2-backend-api-delete-single-task-endpoint: backlog
+  epic-3: in-progress
+  3-1-backend-api-update-task-status-endpoint: done
+  3-2-backend-api-delete-single-task-endpoint: done
   3-3-backend-api-bulk-delete-completed-tasks-endpoint: backlog
   3-4-frontend-complete-task-with-animation-and-optimistic-ui: backlog
   3-5-frontend-delete-task-with-swipe-gesture: backlog
