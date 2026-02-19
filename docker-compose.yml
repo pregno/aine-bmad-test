@@ -121,6 +121,7 @@ services:
     ports:
       - "5173:5173"
     volumes:
+      - ./tsconfig.base.json:/app/tsconfig.base.json:ro
       - ./packages/frontend/src:/app/packages/frontend/src:cached
       - ./packages/shared/src:/app/packages/shared/src:cached
     depends_on:

@@ -4,30 +4,25 @@
 # ── Base stage ──────────────────────────────────────────────────────
 FROM node:20-alpine AS base
 RUN npm install -g pnpm@latest
-RUN apk add --no-cache curl
+RUN apk add --no-cache curl openssl
 WORKDIR /app
 
 # ── Dependencies stage ──────────────────────────────────────────────
 FROM base AS dependencies
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
-COPY packages/shared/package.json ./packages/shared/package.json
-COPY packages/backend/package.json ./packages/backend/package.json
+COPY packages/shared ./packages/shared
+COPY packages/backend ./packages/backend
 RUN pnpm install --frozen-lockfile --filter @aine/backend...
+RUN cd packages/backend && npx prisma generate
 
 # ── Development stage ───────────────────────────────────────────────
 FROM dependencies AS development
-COPY packages/shared ./packages/shared
-COPY packages/backend ./packages/backend
-RUN cd packages/backend && npx prisma generate
 WORKDIR /app/packages/backend
 EXPOSE 3000
 CMD ["pnpm", "run", "dev"]
 
 # ── Build stage ─────────────────────────────────────────────────────
 FROM dependencies AS build
-COPY packages/shared ./packages/shared
-COPY packages/backend ./packages/backend
-RUN cd packages/backend && npx prisma generate
 # Story 1.1 keeps noEmit=true; override for container build output until Story 1.3 adjusts backend build config.
 RUN pnpm exec tsc -p packages/backend/tsconfig.json --noEmit false
 
@@ -44,9 +39,6 @@ CMD ["node", "dist/index.js"]
 
 # ── Test stage ──────────────────────────────────────────────────────
 FROM dependencies AS test
-COPY packages/shared ./packages/shared
-COPY packages/backend ./packages/backend
-RUN cd packages/backend && npx prisma generate
 WORKDIR /app/packages/backend
 ENV NODE_ENV=test
 CMD ["pnpm", "run", "test"]
