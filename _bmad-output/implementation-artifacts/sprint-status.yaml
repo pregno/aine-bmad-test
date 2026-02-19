@@ -60,7 +60,7 @@ development_status:
   2-3-frontend-task-list-view-with-empty-state: done
   2-4-frontend-task-creation-via-fab-and-dialog-5-second-flow: done
   2-5-tanstack-query-integration-with-optimistic-updates: done
-  2-6-cross-device-sync-validation: backlog
+  2-6-cross-device-sync-validation: done
   epic-2-retrospective: optional
 
   # ─────────────────────────────────────────────────────────────────

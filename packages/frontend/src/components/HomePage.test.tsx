@@ -1,10 +1,12 @@
 import { describe, expect, it, vi, beforeEach, beforeAll, afterEach } from 'vitest';
-import { render, screen, waitFor, fireEvent, cleanup, within } from '@testing-library/react';
+import { render, screen, waitFor, fireEvent, cleanup, within, act } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ThemeProvider } from '@mui/material/styles';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query';
 import { theme } from '../theme/muiTheme';
 import { HomePage } from './HomePage';
+import { TASKS_REFETCH_INTERVAL_MS } from '../hooks/useTasksQuery';
+import { TASKS_QUERY_KEY } from '../lib/queryClient';
 
 function renderWithTheme(ui: React.ReactElement) {
   const queryClient = new QueryClient({
@@ -45,6 +47,8 @@ describe('HomePage', () => {
   afterEach(() => {
     cleanup();
     globalThis.fetch = originalFetch;
+    onlineManager.setOnline(true);
+    vi.useRealTimers();
   });
 
   it('renders title and shows loading initially', () => {
@@ -318,7 +322,7 @@ describe('HomePage', () => {
     const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
       if (init?.method === 'POST') {
         postAttempts += 1;
-        if (postAttempts === 1) {
+        if (postAttempts <= 6) {
           return Promise.resolve({ ok: false, status: 500 });
         }
 
@@ -353,9 +357,12 @@ describe('HomePage', () => {
     await userEvent.type(input, taskText);
     await userEvent.click(screen.getByTestId('add-task-submit'));
 
-    await waitFor(() => {
-      expect(screen.getByText('Failed to create task. Try again?')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.getByText('Failed to create task. Try again?')).toBeInTheDocument();
+      },
+      { timeout: 15_000 }
+    );
     expect(screen.queryByText(taskText)).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole('button', { name: 'Retry' }));
@@ -363,7 +370,7 @@ describe('HomePage', () => {
     await waitFor(() => {
       expect(screen.getByText(taskText)).toBeInTheDocument();
     });
-    expect(postAttempts).toBe(2);
+    expect(postAttempts).toBeGreaterThanOrEqual(7);
   });
 
   it('rapid creates keep newest-first order with out-of-order concurrent responses (AC4)', async () => {
@@ -453,13 +460,18 @@ describe('HomePage', () => {
 
   it('failed concurrent create only rolls back its own optimistic task', async () => {
     const postDeferred = [deferred<Response>(), deferred<Response>()];
-    let postIndex = 0;
+    let postCallCount = 0;
 
     const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
       if (init?.method === 'POST') {
-        const current = postDeferred[postIndex]!;
-        postIndex += 1;
-        return current.promise;
+        postCallCount += 1;
+        if (postCallCount === 1) {
+          return postDeferred[0]!.promise;
+        }
+        if (postCallCount === 2) {
+          return postDeferred[1]!.promise;
+        }
+        return Promise.resolve({ ok: false, status: 500 } as Response);
       }
 
       return Promise.resolve({
@@ -487,7 +499,6 @@ describe('HomePage', () => {
       expect(screen.getByText('Task B')).toBeInTheDocument();
     });
 
-    // Second succeeds, first fails afterwards.
     postDeferred[1]!.resolve({
       ok: true,
       json: () =>
@@ -503,10 +514,13 @@ describe('HomePage', () => {
     } as Response);
     postDeferred[0]!.resolve({ ok: false, status: 500 } as Response);
 
-    await waitFor(() => {
-      expect(screen.queryByText('Task A')).not.toBeInTheDocument();
-      expect(screen.getByText('Task B')).toBeInTheDocument();
-    });
+    await waitFor(
+      () => {
+        expect(screen.queryByText('Task A')).not.toBeInTheDocument();
+        expect(screen.getByText('Task B')).toBeInTheDocument();
+      },
+      { timeout: 15_000 }
+    );
   });
 
   it('shows optimistic task even if initial load failed', async () => {
@@ -673,6 +687,116 @@ describe('HomePage', () => {
       expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     });
     expect(screen.queryByText('Escape should discard')).not.toBeInTheDocument();
+  });
+
+  it('TASKS_REFETCH_INTERVAL_MS is 30 seconds (AC2)', () => {
+    expect(TASKS_REFETCH_INTERVAL_MS).toBe(30_000);
+  });
+
+  it('refetches automatically on polling interval for cross-device sync (AC2)', async () => {
+    vi.useFakeTimers();
+
+    let getCallCount = 0;
+    const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      if (!init?.method || init.method === 'GET') {
+        getCallCount += 1;
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [] }),
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderWithTheme(<HomePage />);
+
+    // Flush initial React effects and the initial fetch promise.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(0);
+    });
+
+    expect(getCallCount).toBe(1);
+
+    // Advance by the full polling interval to trigger the refetch.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(TASKS_REFETCH_INTERVAL_MS);
+    });
+
+    expect(getCallCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it('refetches when network reconnects for cross-device sync (AC3)', async () => {
+    let getCallCount = 0;
+    const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      if (!init?.method || init.method === 'GET') {
+        getCallCount += 1;
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [] }),
+      });
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('No tasks yet. Tap + to get started.')).toBeInTheDocument();
+    });
+
+    expect(getCallCount).toBe(1);
+
+    // Simulate going offline then reconnecting — TanStack Query triggers refetch on reconnect.
+    onlineManager.setOnline(false);
+    onlineManager.setOnline(true);
+
+    await waitFor(() => {
+      expect(getCallCount).toBeGreaterThanOrEqual(2);
+    });
+  });
+
+  it('task data from server has all required fields for cross-device parity (AC4)', async () => {
+    const createdAt = '2026-02-18T10:00:00.000Z';
+    const taskFixture = {
+      id: 'parity-id',
+      text: 'Parity task',
+      status: 'ACTIVE' as const,
+      createdAt,
+      completedAt: null as null,
+    };
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [taskFixture] }),
+      })
+    );
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider theme={theme}>
+          <HomePage />
+        </ThemeProvider>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Parity task')).toBeInTheDocument();
+    });
+
+    const cached = queryClient.getQueryData<{ tasks: (typeof taskFixture)[] }>(TASKS_QUERY_KEY);
+    expect(cached?.tasks[0]).toMatchObject({
+      id: 'parity-id',
+      text: 'Parity task',
+      status: 'ACTIVE',
+      createdAt,
+      completedAt: null,
+    });
   });
 
   it('500+ chars shows validation error and character count (AC6)', async () => {

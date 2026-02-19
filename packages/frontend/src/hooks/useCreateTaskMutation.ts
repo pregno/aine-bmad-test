@@ -29,6 +29,8 @@ export function useCreateTaskMutation() {
 
   return useMutation({
     mutationFn: createTask,
+    retry: 5,
+    retryDelay: (attemptIndex) => Math.min(100 * 2 ** attemptIndex, 30_000),
     onMutate: async (text): Promise<CreateTaskContext> => {
       await queryClient.cancelQueries({ queryKey: TASKS_QUERY_KEY });
       const tempTask = createTempTask(text);

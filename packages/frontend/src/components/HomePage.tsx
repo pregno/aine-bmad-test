@@ -110,7 +110,7 @@ export function HomePage() {
           {!isLoading && hasTasks && (
             <Box component="ul" sx={{ listStyle: 'none', m: 0, p: 0 }}>
               {tasks.map((task) => (
-                <Box component="li" key={task.id} sx={{ mb: 1 }}>
+                <Box component="li" key={task.id} sx={{ mb: 1 }} data-taskid={task.id}>
                   <Card sx={{ minHeight: 48 }}>
                     <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
                       <Typography variant="body1">{task.text}</Typography>
