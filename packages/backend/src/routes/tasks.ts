@@ -1,6 +1,12 @@
 import type { FastifyPluginAsync } from 'fastify';
 import { TaskStatus } from '@aine/shared';
-import type { CreateTaskResponse, GetTasksResponse, Task, UpdateTaskResponse } from '@aine/shared';
+import type {
+  CreateTaskResponse,
+  DeleteCompletedResponse,
+  GetTasksResponse,
+  Task,
+  UpdateTaskResponse,
+} from '@aine/shared';
 import { TaskStatus as PrismaTaskStatus } from '@prisma/client';
 import { PrismaClientKnownRequestError } from '@prisma/client/runtime/library';
 import { createTaskSchema, updateTaskSchema, uuidParamSchema } from '../schemas/tasks';
@@ -104,8 +110,14 @@ export const taskRoutes: FastifyPluginAsync = async (fastify) => {
     }
   );
 
-  // IMPORTANT (Story 3.3): When adding DELETE /tasks/completed for bulk delete,
-  // register that route BEFORE this one — otherwise ':id' will match the literal "completed".
+  fastify.delete('/tasks/completed', async (_request, reply) => {
+    const result = await fastify.prisma.task.deleteMany({
+      where: { status: 'COMPLETED' },
+    });
+    const response: DeleteCompletedResponse = { deletedCount: result.count };
+    return reply.status(200).send(response);
+  });
+
   fastify.delete<{ Params: { id: string } }>('/tasks/:id', async (request, reply) => {
     const { id } = request.params;
 

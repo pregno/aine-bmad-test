@@ -69,7 +69,7 @@ development_status:
   epic-3: in-progress
   3-1-backend-api-update-task-status-endpoint: done
   3-2-backend-api-delete-single-task-endpoint: done
-  3-3-backend-api-bulk-delete-completed-tasks-endpoint: backlog
+  3-3-backend-api-bulk-delete-completed-tasks-endpoint: done
   3-4-frontend-complete-task-with-animation-and-optimistic-ui: backlog
   3-5-frontend-delete-task-with-swipe-gesture: backlog
   3-6-frontend-completed-tasks-section-with-collapse-expand: backlog
