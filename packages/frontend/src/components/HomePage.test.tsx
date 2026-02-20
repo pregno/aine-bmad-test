@@ -1699,4 +1699,254 @@ describe('HomePage', () => {
     expect(screen.getByTestId('delete-task-act-1')).toBeInTheDocument();
     expect(screen.getByTestId('delete-task-cmp-1')).toBeInTheDocument();
   });
+
+  // ─── Story 3.7: Clear All Completed Tasks Action ───────────────────────────
+
+  it('expanded completed section shows Clear All Completed button with secondary styling (AC1)', async () => {
+    const tasks = [
+      {
+        id: 'c7-a',
+        text: 'Active',
+        status: 'ACTIVE' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+      },
+      {
+        id: 'c7-c1',
+        text: 'Completed one',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => expect(screen.getByText('Completed (1)')).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('completed-section-toggle'));
+    await waitFor(() => expect(screen.getByText('Completed one')).toBeInTheDocument());
+
+    const btn = screen.getByTestId('clear-completed-button');
+    expect(btn).toBeInTheDocument();
+    expect(btn).toHaveTextContent('Clear All Completed');
+    expect(btn).toHaveClass('MuiButton-textSecondary', 'MuiButton-colorSecondary');
+  });
+
+  it('clicking Clear All Completed opens dialog with dynamic count and both actions (AC2)', async () => {
+    const tasks = [
+      {
+        id: 'c7-c2a',
+        text: 'Done A',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+      {
+        id: 'c7-c2b',
+        text: 'Done B',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => expect(screen.getByText('Completed (2)')).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('completed-section-toggle'));
+    await waitFor(() => expect(screen.getByText('Done A')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByTestId('clear-completed-button'));
+
+    expect(
+      screen.getByText('Delete all 2 completed tasks? This cannot be undone.')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('clear-completed-cancel')).toBeInTheDocument();
+    expect(screen.getByTestId('clear-completed-confirm')).toBeInTheDocument();
+  });
+
+  it('confirm triggers optimistic removal before DELETE resolves (AC3)', async () => {
+    const tasks = [
+      {
+        id: 'c7-c3a',
+        text: 'Completed to clear A',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+      {
+        id: 'c7-c3b',
+        text: 'Completed to clear B',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+      {
+        id: 'c7-c3c',
+        text: 'Completed to clear C',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+    ];
+
+    const deleteDeferred = deferred<Response>();
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE' && url.includes('/tasks/completed')) {
+        return deleteDeferred.promise;
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      } as Response);
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => expect(screen.getByText('Completed (3)')).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('completed-section-toggle'));
+    await waitFor(() => expect(screen.getByText('Completed to clear A')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByTestId('clear-completed-button'));
+    await userEvent.click(screen.getByTestId('clear-completed-confirm'));
+
+    // Staggered optimistic disappearance (~50ms per item).
+    expect(screen.getByText('Completed (3)')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText('Completed (2)')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('Completed (1)')).toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Completed (1)')).not.toBeInTheDocument());
+
+    deleteDeferred.resolve({
+      ok: true,
+      json: () => Promise.resolve({ deletedCount: 3 }),
+    } as Response);
+  });
+
+  it('successful DELETE keeps section cleared and shows success toast (AC4)', async () => {
+    const tasks = [
+      {
+        id: 'c7-c4a',
+        text: 'Clear me A',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+      {
+        id: 'c7-c4b',
+        text: 'Clear me B',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+    ];
+
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE' && url.includes('/tasks/completed')) {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ deletedCount: 2 }),
+        } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      } as Response);
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => expect(screen.getByText('Completed (2)')).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('completed-section-toggle'));
+    await waitFor(() => expect(screen.getByText('Clear me A')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByTestId('clear-completed-button'));
+    await userEvent.click(screen.getByTestId('clear-completed-confirm'));
+
+    await waitFor(() => expect(screen.getByText('2 tasks cleared')).toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Completed (2)')).not.toBeInTheDocument());
+    await waitFor(() => expect(screen.queryByText('Clear me A')).not.toBeInTheDocument());
+  });
+
+  it('failed DELETE rolls back completed tasks and shows error toast (AC5)', async () => {
+    const tasks = [
+      {
+        id: 'c7-c5',
+        text: 'Fails to clear',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+    ];
+
+    const fetchMock = vi.fn().mockImplementation((url: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE' && url.includes('/tasks/completed')) {
+        return Promise.resolve({ ok: false, status: 500 } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      } as Response);
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => expect(screen.getByText('Completed (1)')).toBeInTheDocument());
+    await userEvent.click(screen.getByTestId('completed-section-toggle'));
+    await waitFor(() => expect(screen.getByText('Fails to clear')).toBeInTheDocument());
+
+    await userEvent.click(screen.getByTestId('clear-completed-button'));
+    await userEvent.click(screen.getByTestId('clear-completed-confirm'));
+
+    await waitFor(() =>
+      expect(screen.getByText('Failed to clear completed tasks. Try again?')).toBeInTheDocument()
+    );
+    await waitFor(() => expect(screen.getByText('Fails to clear')).toBeInTheDocument());
+    expect(screen.getByText('Completed (1)')).toBeInTheDocument();
+  });
+
+  it('Clear All Completed button is absent when no completed tasks (AC6)', async () => {
+    const tasks = [
+      {
+        id: 'c7-only',
+        text: 'Only active',
+        status: 'ACTIVE' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => expect(screen.getByText('Only active')).toBeInTheDocument());
+
+    expect(screen.queryByTestId('clear-completed-button')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Completed \(/)).not.toBeInTheDocument();
+  });
 });

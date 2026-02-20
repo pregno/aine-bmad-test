@@ -1,5 +1,19 @@
 import { useState, useCallback } from 'react';
-import { Alert, Box, Button, Collapse, Container, Fab, Snackbar, Typography } from '@mui/material';
+import {
+  Alert,
+  Box,
+  Button,
+  Collapse,
+  Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Fab,
+  Snackbar,
+  Typography,
+} from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -9,6 +23,7 @@ import { useTasksQuery } from '../hooks/useTasksQuery';
 import { useCreateTaskMutation } from '../hooks/useCreateTaskMutation';
 import { useUpdateTaskStatusMutation } from '../hooks/useUpdateTaskStatusMutation';
 import { useDeleteTaskMutation } from '../hooks/useDeleteTaskMutation';
+import { useClearCompletedTasksMutation } from '../hooks/useClearCompletedTasksMutation';
 import { TaskStatus } from '@aine/shared';
 import type { Task } from '@aine/shared';
 
@@ -24,6 +39,11 @@ export function HomePage() {
   );
   const [deleteErrorOpen, setDeleteErrorOpen] = useState(false);
   const [rollbackFadeTaskId, setRollbackFadeTaskId] = useState<string | null>(null);
+  const [clearCompletedDialogOpen, setClearCompletedDialogOpen] = useState(false);
+  const [clearCompletedErrorOpen, setClearCompletedErrorOpen] = useState(false);
+  const [clearCompletedSuccessOpen, setClearCompletedSuccessOpen] = useState(false);
+  const [clearCompletedSuccessMessage, setClearCompletedSuccessMessage] = useState('');
+  const [rollbackFadeTaskIds, setRollbackFadeTaskIds] = useState<Set<string>>(new Set());
   const [isCompletedExpanded, setIsCompletedExpanded] = useState<boolean>(() => {
     try {
       return localStorage.getItem(COMPLETED_EXPANDED_KEY) === 'true';
@@ -35,6 +55,7 @@ export function HomePage() {
   const createTaskMutation = useCreateTaskMutation();
   const updateTaskStatusMutation = useUpdateTaskStatusMutation();
   const deleteTaskMutation = useDeleteTaskMutation();
+  const clearCompletedMutation = useClearCompletedTasksMutation();
   const tasks = data?.tasks ?? [];
   const hasTasks = tasks.length > 0;
   const activeTasks = tasks.filter((t) => t.status === TaskStatus.ACTIVE);
@@ -134,6 +155,44 @@ export function HomePage() {
     });
   }, []);
 
+  const handleClearCompletedClick = useCallback(() => {
+    setClearCompletedDialogOpen(true);
+  }, []);
+
+  const handleClearCompletedCancel = useCallback(() => {
+    setClearCompletedDialogOpen(false);
+  }, []);
+
+  const handleClearCompletedConfirm = useCallback(() => {
+    const ids = new Set(completedTasks.map((t) => t.id));
+    setRollbackFadeTaskIds(new Set());
+    setClearCompletedDialogOpen(false);
+    clearCompletedMutation.mutate(
+      { completedTaskIds: Array.from(ids) },
+      {
+        onSuccess: (data) => {
+          const n = data.deletedCount;
+          setRollbackFadeTaskIds(new Set());
+          setClearCompletedSuccessMessage(n === 1 ? '1 task cleared' : `${n} tasks cleared`);
+          setClearCompletedSuccessOpen(true);
+        },
+        onError: () => {
+          setRollbackFadeTaskIds(ids);
+          setClearCompletedErrorOpen(true);
+        },
+      }
+    );
+  }, [completedTasks, clearCompletedMutation]);
+
+  const handleCloseClearCompletedError = useCallback(() => {
+    setClearCompletedErrorOpen(false);
+    setRollbackFadeTaskIds(new Set());
+  }, []);
+
+  const handleCloseClearCompletedSuccess = useCallback(() => {
+    setClearCompletedSuccessOpen(false);
+  }, []);
+
   return (
     <>
       <Container maxWidth="sm" sx={{ pb: 10 }}>
@@ -222,13 +281,25 @@ export function HomePage() {
               </Box>
               <Collapse in={isCompletedExpanded} timeout={300} unmountOnExit>
                 <Box>
+                  <Button
+                    variant="text"
+                    color="secondary"
+                    size="small"
+                    onClick={handleClearCompletedClick}
+                    data-testid="clear-completed-button"
+                    sx={{ mb: 1 }}
+                  >
+                    Clear All Completed
+                  </Button>
                   {completedTasks.map((task) => (
                     <SwipeableTaskCard
                       key={task.id}
                       task={task}
                       onToggle={handleToggleTask}
                       onDelete={handleDeleteTask}
-                      fadeInOnMount={rollbackFadeTaskId === task.id}
+                      fadeInOnMount={
+                        rollbackFadeTaskId === task.id || rollbackFadeTaskIds.has(task.id)
+                      }
                     />
                   ))}
                 </Box>
@@ -256,6 +327,36 @@ export function HomePage() {
         onClose={() => setDialogOpen(false)}
         onSubmit={handleAddTask}
       />
+
+      <Dialog
+        open={clearCompletedDialogOpen}
+        onClose={handleClearCompletedCancel}
+        aria-labelledby="clear-completed-dialog-title"
+        aria-describedby="clear-completed-dialog-description"
+      >
+        <DialogTitle id="clear-completed-dialog-title">
+          Delete all {completedTasks.length} completed tasks? This cannot be undone.
+        </DialogTitle>
+        <DialogContent>
+          <DialogContentText id="clear-completed-dialog-description">
+            All completed tasks will be permanently removed from your list.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleClearCompletedCancel} data-testid="clear-completed-cancel">
+            Cancel
+          </Button>
+          <Button
+            onClick={handleClearCompletedConfirm}
+            color="primary"
+            variant="contained"
+            data-testid="clear-completed-confirm"
+            autoFocus
+          >
+            Clear Completed
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       <Snackbar
         open={createErrorOpen}
@@ -296,6 +397,28 @@ export function HomePage() {
       >
         <Alert onClose={handleCloseDeleteError} severity="error" sx={{ width: '100%' }}>
           Failed to delete task. Try again?
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={clearCompletedSuccessOpen}
+        autoHideDuration={3000}
+        onClose={handleCloseClearCompletedSuccess}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseClearCompletedSuccess} severity="success" sx={{ width: '100%' }}>
+          {clearCompletedSuccessMessage}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={clearCompletedErrorOpen}
+        autoHideDuration={6000}
+        onClose={handleCloseClearCompletedError}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert onClose={handleCloseClearCompletedError} severity="error" sx={{ width: '100%' }}>
+          Failed to clear completed tasks. Try again?
         </Alert>
       </Snackbar>
     </>

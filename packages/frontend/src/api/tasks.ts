@@ -58,3 +58,17 @@ export async function deleteTask(id: string): Promise<void> {
   }
   // 204 No Content — no body to parse
 }
+
+export interface ClearCompletedResponse {
+  deletedCount: number;
+}
+
+export async function clearCompletedTasks(): Promise<ClearCompletedResponse> {
+  const response = await fetch(`${BASE_URL}/tasks/completed`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to clear completed tasks: ${response.status}`);
+  }
+  return response.json() as Promise<ClearCompletedResponse>;
+}
