@@ -62,4 +62,23 @@ describe('envSchema', () => {
       expect(result.data.DATABASE_URL).toMatch(/^postgresql:\/\//);
     }
   });
+
+  it('accepts valid AUTO_DELETE_CRON expression', () => {
+    const result = envSchema.safeParse({
+      ...baseEnv,
+      AUTO_DELETE_CRON: '*/30 * * * *',
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.AUTO_DELETE_CRON).toBe('*/30 * * * *');
+    }
+  });
+
+  it('rejects invalid AUTO_DELETE_CRON expression', () => {
+    const result = envSchema.safeParse({
+      ...baseEnv,
+      AUTO_DELETE_CRON: 'not-a-cron',
+    });
+    expect(result.success).toBe(false);
+  });
 });

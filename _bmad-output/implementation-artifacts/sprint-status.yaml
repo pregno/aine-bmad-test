@@ -74,7 +74,7 @@ development_status:
   3-5-frontend-delete-task-with-swipe-gesture: done
   3-6-frontend-completed-tasks-section-with-collapse-expand: done
   3-7-frontend-clear-all-completed-tasks-action: done
-  3-8-backend-auto-delete-completed-tasks-after-24-hours-cron-job: backlog
+  3-8-backend-auto-delete-completed-tasks-after-24-hours-cron-job: done
   epic-3-retrospective: optional
 
   # ─────────────────────────────────────────────────────────────────
