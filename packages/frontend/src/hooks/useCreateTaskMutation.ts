@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Task } from '@aine/shared';
+import { TaskStatus } from '@aine/shared';
 import { createTask } from '../api/tasks';
 import { TASKS_QUERY_KEY } from '../lib/queryClient';
 
@@ -18,7 +19,7 @@ function createTempTask(text: string): Task {
   return {
     id: `temp-${Date.now()}-${optimisticCounter}`,
     text,
-    status: 'ACTIVE',
+    status: TaskStatus.ACTIVE,
     createdAt: new Date().toISOString(),
     completedAt: null,
   };

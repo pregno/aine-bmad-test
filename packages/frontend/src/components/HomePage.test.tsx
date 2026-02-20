@@ -829,4 +829,301 @@ describe('HomePage', () => {
       { timeout: 2000 }
     );
   });
+
+  // ─── Story 3.4: Complete Task with Animation and Optimistic UI ────────────
+
+  it('tapping active task card calls PATCH and moves task to completed section (AC1, AC2)', async () => {
+    const activeTask = {
+      id: 'task-1',
+      text: 'Write report',
+      status: 'ACTIVE' as const,
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+    };
+    const completedTask = {
+      ...activeTask,
+      status: 'COMPLETED' as const,
+      completedAt: new Date().toISOString(),
+    };
+
+    const patchDeferred = deferred<Response>();
+    const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH') {
+        return patchDeferred.promise;
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [activeTask] }),
+      } as Response);
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Write report')).toBeInTheDocument();
+    });
+
+    // Task should be in active list initially (no strikethrough)
+    expect(screen.queryByText('Completed (1)')).not.toBeInTheDocument();
+
+    // Click the task text to complete it (bubbles up to Card onClick)
+    await userEvent.click(screen.getByText('Write report'));
+
+    // Optimistic update: task moves to completed section
+    await waitFor(() => {
+      expect(screen.getByText('Completed (1)')).toBeInTheDocument();
+    });
+
+    // PATCH was called with COMPLETED status and UI moved before server response resolved.
+    const patchCall = fetchMock.mock.calls.find(
+      ([, init]: [string, RequestInit?]) => init?.method === 'PATCH'
+    );
+    expect(patchCall).toBeDefined();
+    expect(JSON.parse(patchCall![1]!.body as string)).toEqual({ status: 'COMPLETED' });
+
+    patchDeferred.resolve({
+      ok: true,
+      json: () => Promise.resolve({ task: completedTask }),
+    } as Response);
+  });
+
+  it('tapping completed task card calls PATCH with ACTIVE and moves task back (AC5)', async () => {
+    const completedTask = {
+      id: 'task-2',
+      text: 'Done task',
+      status: 'COMPLETED' as const,
+      createdAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+    };
+    const activeTask = {
+      ...completedTask,
+      status: 'ACTIVE' as const,
+      completedAt: null,
+    };
+
+    const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ task: activeTask }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [completedTask] }),
+      });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Completed (1)')).toBeInTheDocument();
+    });
+
+    // Click the completed task text to un-complete it (bubbles up to Card onClick)
+    await userEvent.click(screen.getByText('Done task'));
+
+    // Optimistic update: task moves back to active section, completed section disappears
+    await waitFor(() => {
+      expect(screen.queryByText('Completed (1)')).not.toBeInTheDocument();
+    });
+
+    const patchCall = fetchMock.mock.calls.find(
+      ([, init]: [string, RequestInit?]) => init?.method === 'PATCH'
+    );
+    expect(patchCall).toBeDefined();
+    expect(JSON.parse(patchCall![1]!.body as string)).toEqual({ status: 'ACTIVE' });
+  });
+
+  it('server response updates task completedAt with server-provided timestamp (AC3)', async () => {
+    const activeTask = {
+      id: 'task-3',
+      text: 'Server timestamp task',
+      status: 'ACTIVE' as const,
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+    };
+    const serverCompletedAt = '2026-02-18T15:00:00.000Z';
+    const serverTask = {
+      ...activeTask,
+      status: 'COMPLETED' as const,
+      completedAt: serverCompletedAt,
+    };
+
+    const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          json: () => Promise.resolve({ task: serverTask }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [activeTask] }),
+      });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+
+    render(
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider theme={theme}>
+          <HomePage />
+        </ThemeProvider>
+      </QueryClientProvider>
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('Server timestamp task')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByText('Server timestamp task'));
+
+    // After server responds, cache has server-provided completedAt
+    await waitFor(() => {
+      const cached = queryClient.getQueryData<{ tasks: (typeof serverTask)[] }>(TASKS_QUERY_KEY);
+      const task = cached?.tasks.find((t) => t.id === 'task-3');
+      expect(task?.completedAt).toBe(serverCompletedAt);
+      expect(task?.status).toBe('COMPLETED');
+    });
+  });
+
+  it('PATCH failure rolls back optimistic update and shows error toast (AC4)', async () => {
+    const activeTask = {
+      id: 'task-4',
+      text: 'Failing task',
+      status: 'ACTIVE' as const,
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+    };
+
+    const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH') {
+        return Promise.resolve({ ok: false, status: 500 });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [activeTask] }),
+      });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Failing task')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByText('Failing task'));
+
+    // Toast appears
+    await waitFor(() => {
+      expect(screen.getByText('Failed to complete task. Try again?')).toBeInTheDocument();
+    });
+
+    // Task is rolled back to active section (no completed section)
+    expect(screen.queryByText('Completed (1)')).not.toBeInTheDocument();
+  });
+
+  it('un-complete failure shows the correct action-specific toast message', async () => {
+    const completedTask = {
+      id: 'task-err-2',
+      text: 'Completed but fails to un-complete',
+      status: 'COMPLETED' as const,
+      createdAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+    };
+
+    const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH') {
+        return Promise.resolve({ ok: false, status: 500 });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [completedTask] }),
+      });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Completed but fails to un-complete')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByText('Completed but fails to un-complete'));
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to un-complete task. Try again?')).toBeInTheDocument();
+    });
+  });
+
+  it('completed section header shows count and is only visible when completedTasks > 0', async () => {
+    const tasks = [
+      {
+        id: 'a1',
+        text: 'Active task',
+        status: 'ACTIVE' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+      },
+      {
+        id: 'c1',
+        text: 'Completed task',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Active task')).toBeInTheDocument();
+      expect(screen.getByText('Completed (1)')).toBeInTheDocument();
+    });
+  });
+
+  it('completed tasks have strikethrough style applied', async () => {
+    const tasks = [
+      {
+        id: 'c2',
+        text: 'Struck through task',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Struck through task')).toBeInTheDocument();
+    });
+
+    const taskText = screen.getByText('Struck through task');
+    expect(taskText).toHaveStyle({ textDecoration: 'line-through' });
+  });
 });

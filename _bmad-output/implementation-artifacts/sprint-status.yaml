@@ -43,7 +43,7 @@ development_status:
   # ─────────────────────────────────────────────────────────────────
   # Epic 1: Development Environment & Infrastructure Setup
   # ─────────────────────────────────────────────────────────────────
-  epic-1: in-progress
+  epic-1: done
   1-1-workspace-setup-with-pnpm-and-shared-types: done
   1-2-docker-compose-multi-environment-configuration: done
   1-3-backend-foundation-with-fastify-and-prisma: done
@@ -54,7 +54,7 @@ development_status:
   # ─────────────────────────────────────────────────────────────────
   # Epic 2: Core Task Management - Capture & Storage
   # ─────────────────────────────────────────────────────────────────
-  epic-2: in-progress
+  epic-2: done
   2-1-backend-api-create-task-endpoint: done
   2-2-backend-api-get-all-tasks-endpoint-with-sorting: done
   2-3-frontend-task-list-view-with-empty-state: done
@@ -70,7 +70,7 @@ development_status:
   3-1-backend-api-update-task-status-endpoint: done
   3-2-backend-api-delete-single-task-endpoint: done
   3-3-backend-api-bulk-delete-completed-tasks-endpoint: done
-  3-4-frontend-complete-task-with-animation-and-optimistic-ui: backlog
+  3-4-frontend-complete-task-with-animation-and-optimistic-ui: done
   3-5-frontend-delete-task-with-swipe-gesture: backlog
   3-6-frontend-completed-tasks-section-with-collapse-expand: backlog
   3-7-frontend-clear-all-completed-tasks-action: backlog
