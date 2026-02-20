@@ -33,11 +33,33 @@ function deferred<T>() {
   return { promise, resolve, reject };
 }
 
+// In-memory localStorage mock (jsdom's localStorage implementation lacks clear() support)
+const lsStore: Record<string, string> = {};
+const localStorageMock = {
+  getItem: (key: string): string | null => lsStore[key] ?? null,
+  setItem: (key: string, value: string): void => {
+    lsStore[key] = value;
+  },
+  removeItem: (key: string): void => {
+    delete lsStore[key];
+  },
+  clear: (): void => {
+    Object.keys(lsStore).forEach((k) => {
+      delete lsStore[k];
+    });
+  },
+  key: (index: number): string | null => Object.keys(lsStore)[index] ?? null,
+  get length(): number {
+    return Object.keys(lsStore).length;
+  },
+} as unknown as Storage;
+
 describe('HomePage', () => {
   let originalFetch: typeof globalThis.fetch;
 
   beforeAll(() => {
     originalFetch = globalThis.fetch;
+    vi.stubGlobal('localStorage', localStorageMock);
   });
 
   beforeEach(() => {
@@ -49,6 +71,7 @@ describe('HomePage', () => {
     globalThis.fetch = originalFetch;
     onlineManager.setOnline(true);
     vi.useRealTimers();
+    localStorageMock.clear();
   });
 
   it('renders title and shows loading initially', () => {
@@ -928,6 +951,11 @@ describe('HomePage', () => {
       expect(screen.getByText('Completed (1)')).toBeInTheDocument();
     });
 
+    await userEvent.click(screen.getByTestId('completed-section-toggle'));
+    await waitFor(() => {
+      expect(screen.getByText('Done task')).toBeInTheDocument();
+    });
+
     // Click the completed task text to un-complete it (bubbles up to Card onClick)
     await userEvent.click(screen.getByText('Done task'));
 
@@ -1060,6 +1088,11 @@ describe('HomePage', () => {
     renderWithTheme(<HomePage />);
 
     await waitFor(() => {
+      expect(screen.getByText('Completed (1)')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId('completed-section-toggle'));
+    await waitFor(() => {
       expect(screen.getByText('Completed but fails to un-complete')).toBeInTheDocument();
     });
 
@@ -1102,6 +1135,11 @@ describe('HomePage', () => {
       expect(screen.getByText('Active task')).toBeInTheDocument();
       expect(screen.getByText('Completed (1)')).toBeInTheDocument();
     });
+    expect(screen.getByTestId('completed-section-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(screen.queryByText('Completed task')).not.toBeInTheDocument();
   });
 
   it('completed tasks have strikethrough style applied', async () => {
@@ -1125,6 +1163,11 @@ describe('HomePage', () => {
 
     renderWithTheme(<HomePage />);
 
+    await waitFor(() => {
+      expect(screen.getByText('Completed (1)')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId('completed-section-toggle'));
     await waitFor(() => {
       expect(screen.getByText('Struck through task')).toBeInTheDocument();
     });
@@ -1357,6 +1400,264 @@ describe('HomePage', () => {
     await waitFor(() => expect(screen.getByText('Fails to delete')).toBeInTheDocument());
   });
 
+  // ─── Story 3.6: Completed Tasks Section with Collapse/Expand ────────────
+
+  it('completed section is collapsed by default — toggle visible, aria-expanded false (AC1)', async () => {
+    const tasks = [
+      {
+        id: 'c6-active',
+        text: 'Active item',
+        status: 'ACTIVE' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+      },
+      {
+        id: 'c6-complete',
+        text: 'Completed item',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Active item')).toBeInTheDocument();
+    });
+
+    const toggle = screen.getByTestId('completed-section-toggle');
+    expect(toggle).toBeInTheDocument();
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.getByText('Completed (1)')).toBeInTheDocument();
+    expect(screen.queryByText('Completed item')).not.toBeInTheDocument();
+  });
+
+  it('clicking completed section header expands the section (AC2)', async () => {
+    const tasks = [
+      {
+        id: 'c6-exp',
+        text: 'Expandable task',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('completed-section-toggle')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('completed-section-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(
+      screen.getByTestId('completed-section-toggle').querySelector('[data-testid="ExpandMoreIcon"]')
+    ).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId('completed-section-toggle'));
+
+    expect(screen.getByTestId('completed-section-toggle')).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByText('Expandable task')).toBeInTheDocument();
+    expect(
+      screen.getByTestId('completed-section-toggle').querySelector('[data-testid="ExpandLessIcon"]')
+    ).toBeInTheDocument();
+  });
+
+  it('clicking header again collapses the section (AC3)', async () => {
+    const tasks = [
+      {
+        id: 'c6-col',
+        text: 'Collapsible task',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('completed-section-toggle')).toBeInTheDocument();
+    });
+
+    // First click: expand
+    await userEvent.click(screen.getByTestId('completed-section-toggle'));
+    expect(screen.getByTestId('completed-section-toggle')).toHaveAttribute('aria-expanded', 'true');
+
+    // Second click: collapse
+    await userEvent.click(screen.getByTestId('completed-section-toggle'));
+    expect(screen.getByTestId('completed-section-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+  });
+
+  it('count badge updates when task is completed while section stays collapsed (AC4)', async () => {
+    const activeTask = {
+      id: 'c6-count-a',
+      text: 'Count active task',
+      status: 'ACTIVE' as const,
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+    };
+    const existingCompleted = {
+      id: 'c6-count-c',
+      text: 'Already completed',
+      status: 'COMPLETED' as const,
+      createdAt: new Date().toISOString(),
+      completedAt: new Date().toISOString(),
+    };
+
+    const patchDeferred = deferred<Response>();
+    const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH') return patchDeferred.promise;
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [activeTask, existingCompleted] }),
+      } as Response);
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Count active task')).toBeInTheDocument();
+      expect(screen.getByText('Completed (1)')).toBeInTheDocument();
+    });
+
+    // Section is collapsed by default (AC4 precondition)
+    expect(screen.getByTestId('completed-section-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+
+    // Complete the active task — optimistic update moves it to completed
+    await userEvent.click(screen.getByText('Count active task'));
+
+    // Count updates to 2, section stays collapsed
+    await waitFor(() => {
+      expect(screen.getByText('Completed (2)')).toBeInTheDocument();
+    });
+    expect(screen.getByTestId('completed-section-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+
+    patchDeferred.resolve({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          task: { ...activeTask, status: 'COMPLETED', completedAt: new Date().toISOString() },
+        }),
+    } as Response);
+  });
+
+  it('completed section toggle is not rendered when there are no completed tasks (AC5)', async () => {
+    const tasks = [
+      {
+        id: 'c6-only-active',
+        text: 'Only active task',
+        status: 'ACTIVE' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Only active task')).toBeInTheDocument();
+    });
+
+    expect(screen.queryByTestId('completed-section-toggle')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Completed \(/)).not.toBeInTheDocument();
+  });
+
+  it('collapse state persists — expanded if localStorage had true (AC6)', async () => {
+    const tasks = [
+      {
+        id: 'c6-persist',
+        text: 'Persisted expanded task',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      })
+    );
+
+    // Simulate a previous session where the user expanded the section
+    localStorage.setItem('aine-completed-expanded', 'true');
+
+    const firstRender = renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('completed-section-toggle')).toBeInTheDocument();
+    });
+
+    // Should be expanded because localStorage had 'true'
+    expect(screen.getByTestId('completed-section-toggle')).toHaveAttribute('aria-expanded', 'true');
+
+    await userEvent.click(screen.getByTestId('completed-section-toggle'));
+    expect(screen.getByTestId('completed-section-toggle')).toHaveAttribute(
+      'aria-expanded',
+      'false'
+    );
+    expect(localStorage.getItem('aine-completed-expanded')).toBe('false');
+
+    firstRender.unmount();
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByTestId('completed-section-toggle')).toHaveAttribute(
+        'aria-expanded',
+        'false'
+      );
+    });
+  });
+
   it('delete button is accessible for both active and completed tasks (AC7)', async () => {
     const tasks = [
       {
@@ -1387,6 +1688,11 @@ describe('HomePage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Active task')).toBeInTheDocument();
+      expect(screen.getByText('Completed (1)')).toBeInTheDocument();
+    });
+
+    await userEvent.click(screen.getByTestId('completed-section-toggle'));
+    await waitFor(() => {
       expect(screen.getByText('Completed task')).toBeInTheDocument();
     });
 

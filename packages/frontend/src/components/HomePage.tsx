@@ -1,6 +1,8 @@
 import { useState, useCallback } from 'react';
-import { Alert, Box, Button, Container, Fab, Snackbar, Typography } from '@mui/material';
+import { Alert, Box, Button, Collapse, Container, Fab, Snackbar, Typography } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { AddTaskDialog } from './AddTaskDialog';
 import { SwipeableTaskCard } from './SwipeableTaskCard';
 import { useTasksQuery } from '../hooks/useTasksQuery';
@@ -9,6 +11,8 @@ import { useUpdateTaskStatusMutation } from '../hooks/useUpdateTaskStatusMutatio
 import { useDeleteTaskMutation } from '../hooks/useDeleteTaskMutation';
 import { TaskStatus } from '@aine/shared';
 import type { Task } from '@aine/shared';
+
+const COMPLETED_EXPANDED_KEY = 'aine-completed-expanded';
 
 export function HomePage() {
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -20,6 +24,13 @@ export function HomePage() {
   );
   const [deleteErrorOpen, setDeleteErrorOpen] = useState(false);
   const [rollbackFadeTaskId, setRollbackFadeTaskId] = useState<string | null>(null);
+  const [isCompletedExpanded, setIsCompletedExpanded] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(COMPLETED_EXPANDED_KEY) === 'true';
+    } catch {
+      return false;
+    }
+  });
   const { data, isLoading, isError, refetch } = useTasksQuery();
   const createTaskMutation = useCreateTaskMutation();
   const updateTaskStatusMutation = useUpdateTaskStatusMutation();
@@ -111,6 +122,18 @@ export function HomePage() {
     setDeleteErrorOpen(false);
   }, []);
 
+  const handleToggleCompleted = useCallback(() => {
+    setIsCompletedExpanded((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem(COMPLETED_EXPANDED_KEY, String(next));
+      } catch {
+        // localStorage unavailable — state still updates in memory
+      }
+      return next;
+    });
+  }, []);
+
   return (
     <>
       <Container maxWidth="sm" sx={{ pb: 10 }}>
@@ -169,20 +192,47 @@ export function HomePage() {
 
           {!isLoading && completedTasks.length > 0 && (
             <Box sx={{ mt: activeTasks.length > 0 ? 2 : 0 }}>
-              <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                Completed ({completedTasks.length})
-              </Typography>
-              <Box>
-                {completedTasks.map((task) => (
-                  <SwipeableTaskCard
-                    key={task.id}
-                    task={task}
-                    onToggle={handleToggleTask}
-                    onDelete={handleDeleteTask}
-                    fadeInOnMount={rollbackFadeTaskId === task.id}
-                  />
-                ))}
+              <Box
+                component="button"
+                type="button"
+                onClick={handleToggleCompleted}
+                aria-expanded={isCompletedExpanded}
+                data-testid="completed-section-toggle"
+                sx={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5,
+                  cursor: 'pointer',
+                  border: 'none',
+                  background: 'none',
+                  p: 0,
+                  mb: 1,
+                  width: '100%',
+                  textAlign: 'left',
+                }}
+              >
+                <Typography variant="subtitle2" color="text.secondary">
+                  Completed ({completedTasks.length})
+                </Typography>
+                {isCompletedExpanded ? (
+                  <ExpandLessIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                ) : (
+                  <ExpandMoreIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
+                )}
               </Box>
+              <Collapse in={isCompletedExpanded} timeout={300} unmountOnExit>
+                <Box>
+                  {completedTasks.map((task) => (
+                    <SwipeableTaskCard
+                      key={task.id}
+                      task={task}
+                      onToggle={handleToggleTask}
+                      onDelete={handleDeleteTask}
+                      fadeInOnMount={rollbackFadeTaskId === task.id}
+                    />
+                  ))}
+                </Box>
+              </Collapse>
             </Box>
           )}
         </Box>

@@ -72,7 +72,7 @@ development_status:
   3-3-backend-api-bulk-delete-completed-tasks-endpoint: done
   3-4-frontend-complete-task-with-animation-and-optimistic-ui: done
   3-5-frontend-delete-task-with-swipe-gesture: done
-  3-6-frontend-completed-tasks-section-with-collapse-expand: backlog
+  3-6-frontend-completed-tasks-section-with-collapse-expand: done
   3-7-frontend-clear-all-completed-tasks-action: backlog
   3-8-backend-auto-delete-completed-tasks-after-24-hours-cron-job: backlog
   epic-3-retrospective: optional
