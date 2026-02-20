@@ -48,3 +48,13 @@ export async function updateTaskStatus(
   }
   return response.json() as Promise<UpdateTaskResponse>;
 }
+
+export async function deleteTask(id: string): Promise<void> {
+  const response = await fetch(`${BASE_URL}/tasks/${id}`, {
+    method: 'DELETE',
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to delete task: ${response.status}`);
+  }
+  // 204 No Content — no body to parse
+}

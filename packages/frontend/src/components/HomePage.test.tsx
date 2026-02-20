@@ -150,13 +150,16 @@ describe('HomePage', () => {
       expect(screen.getByText('Newest task')).toBeInTheDocument();
     });
 
-    const taskList = screen.getByText('Newest task').closest('ul');
-    expect(taskList).toBeInTheDocument();
-    const cards = taskList!.querySelectorAll(':scope > li');
-    expect(cards).toHaveLength(3);
-    expect(cards[0]).toHaveTextContent('Newest task');
-    expect(cards[1]).toHaveTextContent('Middle task');
-    expect(cards[2]).toHaveTextContent('Oldest task');
+    // Verify DOM order: Newest → Middle → Oldest (newest-first)
+    const newestEl = screen.getByText('Newest task');
+    const middleEl = screen.getByText('Middle task');
+    const oldestEl = screen.getByText('Oldest task');
+    expect(
+      newestEl.compareDocumentPosition(middleEl) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
+    expect(
+      middleEl.compareDocumentPosition(oldestEl) & Node.DOCUMENT_POSITION_FOLLOWING
+    ).toBeTruthy();
   });
 
   it('shows error and Retry when API fails (AC4)', async () => {
@@ -449,13 +452,16 @@ describe('HomePage', () => {
         }),
     } as Response);
 
-    const taskList = screen.getByText('Task Three').closest('ul');
-    expect(taskList).toBeInTheDocument();
-    const cards = taskList!.querySelectorAll(':scope > li');
-    expect(cards).toHaveLength(3);
-    expect(cards[0]).toHaveTextContent('Task Three');
-    expect(cards[1]).toHaveTextContent('Task Two');
-    expect(cards[2]).toHaveTextContent('Task One');
+    // Verify DOM order: Task Three → Task Two → Task One (newest-first based on insertion order)
+    await waitFor(() => {
+      const threeEl = screen.getByText('Task Three');
+      const twoEl = screen.getByText('Task Two');
+      const oneEl = screen.getByText('Task One');
+      expect(
+        threeEl.compareDocumentPosition(twoEl) & Node.DOCUMENT_POSITION_FOLLOWING
+      ).toBeTruthy();
+      expect(twoEl.compareDocumentPosition(oneEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    });
   });
 
   it('failed concurrent create only rolls back its own optimistic task', async () => {
@@ -1125,5 +1131,266 @@ describe('HomePage', () => {
 
     const taskText = screen.getByText('Struck through task');
     expect(taskText).toHaveStyle({ textDecoration: 'line-through' });
+  });
+
+  // ─── Story 3.5: Delete Task with Swipe Gesture ────────────────────────────
+
+  it('clicking delete button opens confirmation dialog (AC2)', async () => {
+    const task = {
+      id: 'del-1',
+      text: 'Task to delete',
+      status: 'ACTIVE' as const,
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+    };
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [task] }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => expect(screen.getByText('Task to delete')).toBeInTheDocument());
+
+    // Click delete button directly via data-testid (pointer-events CSS not enforced in jsdom)
+    fireEvent.click(screen.getByTestId('delete-task-del-1'));
+
+    expect(screen.getByText('Delete this task? This cannot be undone.')).toBeInTheDocument();
+    expect(screen.getByTestId('delete-cancel')).toBeInTheDocument();
+    expect(screen.getByTestId('delete-confirm')).toBeInTheDocument();
+  });
+
+  it('swiping left reveals delete affordance on the task card (AC1)', async () => {
+    const task = {
+      id: 'swipe-1',
+      text: 'Swipe me',
+      status: 'ACTIVE' as const,
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+    };
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [task] }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => expect(screen.getByText('Swipe me')).toBeInTheDocument());
+
+    const card = screen.getByText('Swipe me').closest('.MuiCard-root');
+    expect(card).toBeInTheDocument();
+
+    fireEvent.touchStart(card!, { touches: [{ clientX: 200 }] });
+    fireEvent.touchMove(card!, { touches: [{ clientX: 80 }] });
+    fireEvent.touchEnd(card!);
+
+    // Delete icon button becomes visible after reveal.
+    expect(screen.getByTestId('delete-task-swipe-1')).toHaveStyle({ opacity: '1' });
+  });
+
+  it('tap elsewhere closes revealed swipe state (AC4)', async () => {
+    const task = {
+      id: 'swipe-2',
+      text: 'Close reveal by outside tap',
+      status: 'ACTIVE' as const,
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+    };
+
+    const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === 'PATCH') {
+        return Promise.resolve({
+          ok: true,
+          json: () =>
+            Promise.resolve({
+              task: {
+                ...task,
+                status: 'COMPLETED',
+                completedAt: new Date().toISOString(),
+              },
+            }),
+        });
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [task] }),
+      });
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() =>
+      expect(screen.getByText('Close reveal by outside tap')).toBeInTheDocument()
+    );
+
+    const card = screen.getByText('Close reveal by outside tap').closest('.MuiCard-root');
+    expect(card).toBeInTheDocument();
+
+    fireEvent.touchStart(card!, { touches: [{ clientX: 220 }] });
+    fireEvent.touchMove(card!, { touches: [{ clientX: 120 }] });
+    fireEvent.touchEnd(card!);
+    expect(screen.getByTestId('delete-task-swipe-2')).toHaveStyle({ opacity: '1' });
+
+    // Tap elsewhere (outside card) should close reveal.
+    fireEvent.pointerDown(document.body);
+
+    // Now tapping the card text should toggle completion (PATCH call happens).
+    await userEvent.click(screen.getByText('Close reveal by outside tap'));
+    const patchCall = fetchMock.mock.calls.find(
+      ([, init]: [string, RequestInit?]) => init?.method === 'PATCH'
+    );
+    expect(patchCall).toBeDefined();
+  });
+
+  it('cancel in delete dialog closes without removing task (AC4)', async () => {
+    const task = {
+      id: 'del-2',
+      text: 'Keep this task',
+      status: 'ACTIVE' as const,
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+    };
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [task] }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => expect(screen.getByText('Keep this task')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('delete-task-del-2'));
+    expect(screen.getByText('Delete this task? This cannot be undone.')).toBeInTheDocument();
+
+    await userEvent.click(screen.getByTestId('delete-cancel'));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    });
+    expect(screen.getByText('Keep this task')).toBeInTheDocument();
+  });
+
+  it('confirming delete removes task optimistically before DELETE resolves (AC3)', async () => {
+    const task = {
+      id: 'del-3',
+      text: 'Task to remove',
+      status: 'ACTIVE' as const,
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+    };
+
+    const deleteDeferred = deferred<Response>();
+    const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') return deleteDeferred.promise;
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [task] }),
+      } as Response);
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => expect(screen.getByText('Task to remove')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('delete-task-del-3'));
+    await userEvent.click(screen.getByTestId('delete-confirm'));
+
+    // Optimistic removal: task gone from list before DELETE resolves
+    await waitFor(() => expect(screen.queryByText('Task to remove')).not.toBeInTheDocument());
+
+    // Verify DELETE was called with the correct URL
+    const deleteCall = fetchMock.mock.calls.find(([url]: [string]) => url.includes('del-3'));
+    expect(deleteCall).toBeDefined();
+
+    // Resolve the DELETE and ensure the task stays removed (AC5)
+    deleteDeferred.resolve({ ok: true } as Response);
+    await waitFor(() => expect(screen.queryByText('Task to remove')).not.toBeInTheDocument());
+  });
+
+  it('DELETE failure shows error toast and task reappears (AC6)', async () => {
+    const task = {
+      id: 'del-4',
+      text: 'Fails to delete',
+      status: 'ACTIVE' as const,
+      createdAt: new Date().toISOString(),
+      completedAt: null,
+    };
+
+    const fetchMock = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
+      if (init?.method === 'DELETE') {
+        return Promise.resolve({ ok: false, status: 500 } as Response);
+      }
+      return Promise.resolve({
+        ok: true,
+        json: () => Promise.resolve({ tasks: [task] }),
+      } as Response);
+    });
+
+    vi.stubGlobal('fetch', fetchMock);
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => expect(screen.getByText('Fails to delete')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByTestId('delete-task-del-4'));
+    await userEvent.click(screen.getByTestId('delete-confirm'));
+
+    // Error toast appears
+    await waitFor(() =>
+      expect(screen.getByText('Failed to delete task. Try again?')).toBeInTheDocument()
+    );
+
+    // Task reappears via rollback
+    await waitFor(() => expect(screen.getByText('Fails to delete')).toBeInTheDocument());
+  });
+
+  it('delete button is accessible for both active and completed tasks (AC7)', async () => {
+    const tasks = [
+      {
+        id: 'act-1',
+        text: 'Active task',
+        status: 'ACTIVE' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: null,
+      },
+      {
+        id: 'cmp-1',
+        text: 'Completed task',
+        status: 'COMPLETED' as const,
+        createdAt: new Date().toISOString(),
+        completedAt: new Date().toISOString(),
+      },
+    ];
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.resolve({ tasks }),
+      })
+    );
+
+    renderWithTheme(<HomePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Active task')).toBeInTheDocument();
+      expect(screen.getByText('Completed task')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('delete-task-act-1')).toBeInTheDocument();
+    expect(screen.getByTestId('delete-task-cmp-1')).toBeInTheDocument();
   });
 });
