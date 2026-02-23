@@ -1,0 +1,233 @@
+{
+  "phase": "PHASE_1_COMPLETE",
+  "generated_at": "2026-02-18T00:00:00.000Z",
+  "gate_scope": "epic",
+  "scope_id": "epic-3",
+  "requirements": [
+    {
+      "id": "3.1-PATCH-complete",
+      "priority": "P0",
+      "description": "PATCH complete returns 200 + completedAt",
+      "coverage": "FULL",
+      "tests": [
+        "task-workflow.spec.ts API",
+        "task-lifecycle.spec.ts"
+      ]
+    },
+    {
+      "id": "3.1-PATCH-404-400",
+      "priority": "P0",
+      "description": "PATCH 404, 400 invalid status",
+      "coverage": "FULL",
+      "tests": [
+        "tasks.update.test.ts"
+      ]
+    },
+    {
+      "id": "3.2-DELETE-204",
+      "priority": "P0",
+      "description": "DELETE 204, task removed",
+      "coverage": "FULL",
+      "tests": [
+        "task-workflow.spec.ts",
+        "tasks.delete.test.ts"
+      ]
+    },
+    {
+      "id": "3.2-DELETE-404",
+      "priority": "P0",
+      "description": "DELETE 404",
+      "coverage": "FULL",
+      "tests": [
+        "task-workflow.spec.ts"
+      ]
+    },
+    {
+      "id": "3.3-DELETE-completed",
+      "priority": "P0",
+      "description": "DELETE completed 200 + deletedCount",
+      "coverage": "FULL",
+      "tests": [
+        "task-workflow.spec.ts",
+        "tasks.clear-completed.test.ts"
+      ]
+    },
+    {
+      "id": "3.4-complete-moves",
+      "priority": "P0",
+      "description": "Complete task moves to completed section",
+      "coverage": "FULL",
+      "tests": [
+        "task-lifecycle.spec.ts"
+      ]
+    },
+    {
+      "id": "3.5-swipe-confirm-delete",
+      "priority": "P0",
+      "description": "Swipe → confirm → delete",
+      "coverage": "FULL",
+      "tests": [
+        "error-states.spec.ts delete cancel",
+        "HomePage.test AC3"
+      ]
+    },
+    {
+      "id": "3.7-clear-success",
+      "priority": "P0",
+      "description": "Clear all completed + success toast",
+      "coverage": "FULL",
+      "tests": [
+        "task-lifecycle.spec.ts",
+        "HomePage.test"
+      ]
+    },
+    {
+      "id": "3.8-cron-24h",
+      "priority": "P0",
+      "description": "Cron deletes only >24h",
+      "coverage": "FULL",
+      "tests": [
+        "jobs.autoDelete.test.ts",
+        "autoDeleteCompletedTasks.test.ts"
+      ]
+    },
+    {
+      "id": "3.5-delete-cancel",
+      "priority": "P1",
+      "description": "Delete confirm Cancel preserves task",
+      "coverage": "FULL",
+      "tests": [
+        "error-states.spec.ts"
+      ]
+    },
+    {
+      "id": "3.7-clear-cancel",
+      "priority": "P1",
+      "description": "Clear confirm Cancel preserves tasks",
+      "coverage": "FULL",
+      "tests": [
+        "error-states.spec.ts"
+      ]
+    },
+    {
+      "id": "3.6-expand-collapse",
+      "priority": "P1",
+      "description": "Completed section expand/collapse",
+      "coverage": "FULL",
+      "tests": [
+        "task-lifecycle.spec.ts",
+        "HomePage.test"
+      ]
+    },
+    {
+      "id": "3.6-count-badge",
+      "priority": "P1",
+      "description": "Completed count badge updates",
+      "coverage": "FULL",
+      "tests": [
+        "task-lifecycle.spec.ts"
+      ]
+    },
+    {
+      "id": "3.6-no-section-empty",
+      "priority": "P1",
+      "description": "No completed section when empty",
+      "coverage": "FULL",
+      "tests": [
+        "task-lifecycle.spec.ts",
+        "HomePage.test"
+      ]
+    },
+    {
+      "id": "3.4-rollback-fail",
+      "priority": "P1",
+      "description": "Optimistic complete rollback on fail",
+      "coverage": "FULL",
+      "tests": [
+        "HomePage.test"
+      ]
+    },
+    {
+      "id": "3.5-delete-fail-rollback",
+      "priority": "P1",
+      "description": "Delete fail → task reappears + toast",
+      "coverage": "FULL",
+      "tests": [
+        "HomePage.test AC6"
+      ]
+    },
+    {
+      "id": "3.7-clear-fail-rollback",
+      "priority": "P1",
+      "description": "Clear fail → tasks reappear + toast",
+      "coverage": "FULL",
+      "tests": [
+        "HomePage.test"
+      ]
+    },
+    {
+      "id": "3.7-button-hidden",
+      "priority": "P1",
+      "description": "Clear button hidden when no completed",
+      "coverage": "FULL",
+      "tests": [
+        "task-lifecycle.spec.ts",
+        "HomePage.test"
+      ]
+    },
+    {
+      "id": "3.8-cron-logs",
+      "priority": "P1",
+      "description": "Cron logs, no crash on DB fail",
+      "coverage": "FULL",
+      "tests": [
+        "autoDeleteCompletedTasks.test.ts",
+        "jobs.autoDelete.test.ts"
+      ]
+    }
+  ],
+  "coverage_statistics": {
+    "total_requirements": 19,
+    "fully_covered": 19,
+    "partially_covered": 0,
+    "uncovered": 0,
+    "overall_coverage_percentage": 100,
+    "priority_breakdown": {
+      "P0": {
+        "total": 9,
+        "covered": 9,
+        "percentage": 100
+      },
+      "P1": {
+        "total": 10,
+        "covered": 10,
+        "percentage": 100
+      },
+      "P2": {
+        "total": 0,
+        "covered": 0,
+        "percentage": 100
+      },
+      "P3": {
+        "total": 0,
+        "covered": 0,
+        "percentage": 100
+      }
+    }
+  },
+  "gap_analysis": {
+    "critical_gaps": [],
+    "high_gaps": [],
+    "medium_gaps": [],
+    "low_gaps": [],
+    "partial_coverage_items": [],
+    "unit_only_items": []
+  },
+  "recommendations": [
+    {
+      "priority": "LOW",
+      "action": "Run /bmad-tea-test-review on additional specs (task-lifecycle, task-workflow) for quality validation",
+      "requirements": []
+    }
+  ]
+}
