@@ -1,0 +1,29 @@
+{
+  "dimension": "maintainability",
+  "score": 93,
+  "max_score": 100,
+  "grade": "A",
+  "violations": [
+    {
+      "file": "packages/frontend/tests/e2e/error-states.spec.ts",
+      "line": 76,
+      "severity": "MEDIUM",
+      "category": "fragile-selector",
+      "description": "Uses .locator('..').locator('..') for DOM traversal — brittle if structure changes",
+      "suggestion": "Add data-taskid to card container or use filter with getByTestId for resilient selection",
+      "code_snippet": "const card = page.getByText(text).locator('..').locator('..');"
+    }
+  ],
+  "passed_checks": 11,
+  "failed_checks": 1,
+  "total_checks": 12,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 1,
+    "LOW": 0
+  },
+  "recommendations": [
+    "Replace locator('..').locator('..') with data-testid-scoped or filter-based selector per selector-resilience.md"
+  ],
+  "summary": "File is 87 lines (<300). Good describe grouping, uses createTaskViaDialog helper. One MEDIUM: fragile parent traversal."
+}

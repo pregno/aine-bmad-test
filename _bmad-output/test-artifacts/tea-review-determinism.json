@@ -1,0 +1,29 @@
+{
+  "dimension": "determinism",
+  "score": 95,
+  "max_score": 100,
+  "grade": "A",
+  "violations": [
+    {
+      "file": "packages/frontend/tests/e2e/error-states.spec.ts",
+      "line": 51,
+      "severity": "LOW",
+      "category": "time-dependency",
+      "description": "Uses Date.now() for unique task text - acceptable for E2E uniqueness but knowledge base prefers faker for consistency",
+      "suggestion": "Consider createTask() factory with faker for alignment with data-factories.md",
+      "code_snippet": "const text = `ClearCancel ${Date.now()}`;"
+    }
+  ],
+  "passed_checks": 14,
+  "failed_checks": 1,
+  "total_checks": 15,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 1
+  },
+  "recommendations": [
+    "Date.now() for unique strings is acceptable in E2E; optional: use task factory for consistency"
+  ],
+  "summary": "Tests are highly deterministic. No hard waits, no random generation. Route intercept before goto (network-first). One LOW violation for Date.now() in unique text."
+}

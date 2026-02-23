@@ -1,0 +1,23 @@
+{
+  "dimension": "performance",
+  "score": 100,
+  "max_score": 100,
+  "grade": "A",
+  "violations": [],
+  "passed_checks": 12,
+  "failed_checks": 0,
+  "total_checks": 12,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 0
+  },
+  "performance_metrics": {
+    "parallelizable_tests": 4,
+    "serial_tests": 0,
+    "avg_test_duration_estimate": "~5–15 seconds each",
+    "slow_tests": []
+  },
+  "recommendations": [],
+  "summary": "All tests parallelizable. No hard waits, no .serial. Uses assertion timeouts appropriately. Good performance profile."
+}

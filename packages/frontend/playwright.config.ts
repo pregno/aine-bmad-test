@@ -6,11 +6,18 @@ export default defineConfig({
   forbidOnly: !!process.env['CI'],
   retries: process.env['CI'] ? 2 : 0,
   workers: process.env['CI'] ? 1 : undefined,
-  reporter: 'html',
+  timeout: 60_000,
+  expect: { timeout: 15_000 },
+  reporter: process.env['CI']
+    ? [['html'], ['junit', { outputFile: 'test-results/junit.xml' }]]
+    : 'html',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: process.env['BASE_URL'] ?? 'http://localhost:5173',
+    actionTimeout: 15_000,
+    navigationTimeout: 30_000,
     screenshot: 'only-on-failure',
     trace: 'on-first-retry',
+    video: 'on-first-retry',
   },
   projects: [
     {

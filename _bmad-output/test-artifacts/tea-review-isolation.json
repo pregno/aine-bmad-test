@@ -1,0 +1,29 @@
+{
+  "dimension": "isolation",
+  "score": 92,
+  "max_score": 100,
+  "grade": "A",
+  "violations": [
+    {
+      "file": "packages/frontend/tests/e2e/error-states.spec.ts",
+      "line": 50,
+      "severity": "MEDIUM",
+      "category": "missing-cleanup",
+      "description": "Tests 3 and 4 create tasks via createTaskViaDialog but do not clean up — tasks persist in DB",
+      "suggestion": "Add afterEach to delete created tasks or use fixture with auto-cleanup",
+      "code_snippet": "await createTaskViaDialog(page, text);"
+    }
+  ],
+  "passed_checks": 13,
+  "failed_checks": 1,
+  "total_checks": 14,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 1,
+    "LOW": 0
+  },
+  "recommendations": [
+    "Add cleanup for tasks created in Clear Cancel and Delete Cancel tests to prevent DB accumulation"
+  ],
+  "summary": "Tests are well isolated with unique data per run. No shared state or order dependencies. One MEDIUM: missing cleanup for created tasks."
+}

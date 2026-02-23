@@ -1,21 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
-
-async function clearTasksViaAPI(baseURL: string) {
-  const res = await fetch(`${baseURL.replace('5173', '3000')}/api/v1/tasks`);
-  const { tasks } = (await res.json()) as { tasks: { id: string }[] };
-  // No delete endpoint yet — we just note that tasks from previous runs may exist.
-  // Tests use unique text to avoid collisions.
-  return tasks;
-}
-
-async function createTaskViaDialog(page: Page, text: string) {
-  await page
-    .getByRole('button', { name: /add task/i })
-    .first()
-    .click();
-  await page.getByRole('textbox').fill(text);
-  await page.getByTestId('add-task-submit').click();
-}
+import { test, expect } from '@playwright/test';
+import { createTaskViaDialog } from '../support/helpers';
 
 test.describe('Task Creation Workflow', () => {
   test('shows app title and FAB on load', async ({ page }) => {
@@ -210,5 +194,71 @@ test.describe('API Contract', () => {
     expect(response.status()).toBe(200);
     const body = (await response.json()) as { status: string };
     expect(body.status).toBe('healthy');
+  });
+
+  test('PATCH /api/v1/tasks/:id completes a task and returns 200', async ({ request }) => {
+    const createRes = await request.post('http://localhost:3000/api/v1/tasks', {
+      data: { text: `Complete-me ${Date.now()}` },
+    });
+    expect(createRes.status()).toBe(201);
+    const { task } = (await createRes.json()) as { task: { id: string } };
+
+    const patchRes = await request.patch(`http://localhost:3000/api/v1/tasks/${task.id}`, {
+      data: { status: 'COMPLETED' },
+    });
+    expect(patchRes.status()).toBe(200);
+    const body = (await patchRes.json()) as {
+      task: { id: string; status: string; completedAt: string | null };
+    };
+    expect(body.task.status).toBe('COMPLETED');
+    expect(body.task.completedAt).toBeTruthy();
+  });
+
+  test('PATCH /api/v1/tasks/:id returns 404 for non-existent task', async ({ request }) => {
+    const res = await request.patch(
+      'http://localhost:3000/api/v1/tasks/00000000-0000-0000-0000-000000000000',
+      {
+        data: { status: 'COMPLETED' },
+      }
+    );
+    expect(res.status()).toBe(404);
+  });
+
+  test('DELETE /api/v1/tasks/:id returns 204 and removes task', async ({ request }) => {
+    const createRes = await request.post('http://localhost:3000/api/v1/tasks', {
+      data: { text: `Delete-me ${Date.now()}` },
+    });
+    expect(createRes.status()).toBe(201);
+    const { task } = (await createRes.json()) as { task: { id: string } };
+
+    const deleteRes = await request.delete(`http://localhost:3000/api/v1/tasks/${task.id}`);
+    expect(deleteRes.status()).toBe(204);
+
+    const getRes = await request.get('http://localhost:3000/api/v1/tasks');
+    const { tasks } = (await getRes.json()) as { tasks: { id: string }[] };
+    expect(tasks.some((t) => t.id === task.id)).toBe(false);
+  });
+
+  test('DELETE /api/v1/tasks/:id returns 404 for non-existent task', async ({ request }) => {
+    const res = await request.delete(
+      'http://localhost:3000/api/v1/tasks/00000000-0000-0000-0000-000000000000'
+    );
+    expect(res.status()).toBe(404);
+  });
+
+  test('DELETE /api/v1/tasks/completed returns 200 with deletedCount', async ({ request }) => {
+    const createRes = await request.post('http://localhost:3000/api/v1/tasks', {
+      data: { text: `Bulk-delete-me ${Date.now()}` },
+    });
+    expect(createRes.status()).toBe(201);
+    const { task } = (await createRes.json()) as { task: { id: string } };
+    await request.patch(`http://localhost:3000/api/v1/tasks/${task.id}`, {
+      data: { status: 'COMPLETED' },
+    });
+
+    const deleteRes = await request.delete('http://localhost:3000/api/v1/tasks/completed');
+    expect(deleteRes.status()).toBe(200);
+    const body = (await deleteRes.json()) as { deletedCount: number };
+    expect(body.deletedCount).toBeGreaterThanOrEqual(1);
   });
 });

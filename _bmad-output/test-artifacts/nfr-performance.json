@@ -1,0 +1,30 @@
+{
+  "domain": "performance",
+  "risk_level": "LOW",
+  "findings": [
+    {
+      "criterion": "Response Time",
+      "status": "CONCERNS",
+      "evidence": "No load test; PRD target 5s capture - UNKNOWN measured"
+    },
+    {
+      "criterion": "Throughput",
+      "status": "CONCERNS",
+      "evidence": "No load test; single-user focus per PRD"
+    },
+    {
+      "criterion": "Resource Usage",
+      "status": "CONCERNS",
+      "evidence": "No profiling; Docker Compose resource limits UNKNOWN"
+    }
+  ],
+  "compliance": {
+    "PERFORMANCE_SLO": "UNKNOWN"
+  },
+  "priority_actions": [
+    {
+      "action": "Add baseline load test (k6 or Playwright) for critical paths",
+      "urgency": "LOW"
+    }
+  ]
+}

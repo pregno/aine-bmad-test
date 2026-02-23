@@ -1,4 +1,5 @@
 import { test, expect } from '@playwright/test';
+import { createTaskViaDialog } from '../support/helpers';
 
 test.describe('cross-device sync', () => {
   test('task created on phone appears on desktop within sync window (AC1)', async ({ browser }) => {
@@ -15,13 +16,7 @@ test.describe('cross-device sync', () => {
     await expect(mobilePage.locator('h1')).toContainText('aine');
 
     const taskText = `Cross-device task ${Date.now()}`;
-
-    await mobilePage
-      .getByRole('button', { name: /add task/i })
-      .first()
-      .click();
-    await mobilePage.getByRole('textbox').fill(taskText);
-    await mobilePage.getByTestId('add-task-submit').click();
+    await createTaskViaDialog(mobilePage, taskText);
 
     // Task is visible on mobile immediately via optimistic UI (Story 2.5).
     await expect(mobilePage.getByText(taskText)).toBeVisible({ timeout: 3_000 });
@@ -47,13 +42,7 @@ test.describe('cross-device sync', () => {
     await page2.goto('/');
 
     const taskText = `Parity task ${Date.now()}`;
-
-    await page1
-      .getByRole('button', { name: /add task/i })
-      .first()
-      .click();
-    await page1.getByRole('textbox').fill(taskText);
-    await page1.getByTestId('add-task-submit').click();
+    await createTaskViaDialog(page1, taskText);
     await expect(page1.getByText(taskText)).toBeVisible({ timeout: 5_000 });
 
     await page1.waitForFunction(
@@ -85,13 +74,7 @@ test.describe('cross-device sync', () => {
     await page1.goto('/');
 
     const taskText = `Fresh device task ${Date.now()}`;
-
-    await page1
-      .getByRole('button', { name: /add task/i })
-      .first()
-      .click();
-    await page1.getByRole('textbox').fill(taskText);
-    await page1.getByTestId('add-task-submit').click();
+    await createTaskViaDialog(page1, taskText);
     await expect(page1.getByText(taskText)).toBeVisible({ timeout: 5_000 });
 
     await context1.close();

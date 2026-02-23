@@ -1,0 +1,35 @@
+{
+  "domain": "reliability",
+  "risk_level": "LOW",
+  "findings": [
+    {
+      "criterion": "Error Handling",
+      "status": "PASS",
+      "evidence": "E2E error-states.spec tests Retry, cancel flows; TanStack retry"
+    },
+    {
+      "criterion": "Fault Tolerance",
+      "status": "CONCERNS",
+      "evidence": "No circuit breakers; single DB - acceptable for local"
+    },
+    {
+      "criterion": "CI Burn-In",
+      "status": "CONCERNS",
+      "evidence": "No burn-in results; Playwright retries in CI"
+    },
+    {
+      "criterion": "Availability",
+      "status": "CONCERNS",
+      "evidence": "No uptime data; local/home network per PRD"
+    }
+  ],
+  "compliance": {
+    "RELIABILITY_SLA": "UNKNOWN"
+  },
+  "priority_actions": [
+    {
+      "action": "Run CI burn-in (10+ consecutive runs) for stability baseline",
+      "urgency": "LOW"
+    }
+  ]
+}

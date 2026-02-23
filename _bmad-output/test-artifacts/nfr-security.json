@@ -1,0 +1,36 @@
+{
+  "domain": "security",
+  "risk_level": "LOW",
+  "findings": [
+    {
+      "criterion": "AuthN/AuthZ",
+      "status": "PASS",
+      "evidence": "No auth in v1 per PRD; N/A for scope"
+    },
+    {
+      "criterion": "Secrets",
+      "status": "CONCERNS",
+      "evidence": "Env vars used; no Vault; acceptable for local use"
+    },
+    {
+      "criterion": "Input Validation",
+      "status": "PASS",
+      "evidence": "Prisma parameterized queries; Fastify validation"
+    },
+    {
+      "criterion": "Dependency Vulnerabilities",
+      "status": "CONCERNS",
+      "evidence": "npm audit: esbuild, undici, fastify, minimatch require review"
+    }
+  ],
+  "compliance": {
+    "OWASP_TOP_10": "PARTIAL",
+    "SECRETS_MANAGEMENT": "PARTIAL"
+  },
+  "priority_actions": [
+    {
+      "action": "Review npm audit findings (esbuild, undici, fastify, minimatch)",
+      "urgency": "NORMAL"
+    }
+  ]
+}

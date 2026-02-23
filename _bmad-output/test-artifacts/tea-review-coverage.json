@@ -1,0 +1,24 @@
+{
+  "dimension": "coverage",
+  "score": 95,
+  "max_score": 100,
+  "grade": "A",
+  "violations": [],
+  "passed_checks": 10,
+  "failed_checks": 0,
+  "total_checks": 10,
+  "violation_summary": {
+    "HIGH": 0,
+    "MEDIUM": 0,
+    "LOW": 0
+  },
+  "coverage_gaps": {
+    "untested_endpoints": [],
+    "untested_user_paths": [],
+    "missing_error_scenarios": []
+  },
+  "recommendations": [
+    "Scope is focused; consider adding POST/PATCH 500 error toast tests in future (separate spec)"
+  ],
+  "summary": "Covers P0 error state (GET fail + Retry) and P1 cancel flows. Aligns with automation-summary targets. No critical gaps for this file's scope."
+}

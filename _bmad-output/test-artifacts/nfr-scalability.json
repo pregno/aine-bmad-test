@@ -1,0 +1,25 @@
+{
+  "domain": "scalability",
+  "risk_level": "LOW",
+  "findings": [
+    {
+      "criterion": "Statelessness",
+      "status": "PASS",
+      "evidence": "Stateless API; session-free v1"
+    },
+    {
+      "criterion": "Bottlenecks",
+      "status": "CONCERNS",
+      "evidence": "No load test; DB single point - OK for scope"
+    },
+    {
+      "criterion": "SLA Definitions",
+      "status": "CONCERNS",
+      "evidence": "PRD: local use; no formal SLA"
+    }
+  ],
+  "compliance": {
+    "SCALABILITY_TARGET": "N/A"
+  },
+  "priority_actions": []
+}
